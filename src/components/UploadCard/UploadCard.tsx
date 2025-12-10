@@ -1,4 +1,5 @@
-import { useState, useRef, DragEvent, ChangeEvent } from 'react';
+import { useState, useRef } from 'react';
+import type { DragEvent, ChangeEvent } from 'react';
 import './UploadCard.css';
 
 interface UploadCardProps {

@@ -7,7 +7,7 @@ import { PreprocessedGallery } from '../components/PreprocessedGallery/Preproces
 import { SegmentationOverlay } from '../components/SegmentationOverlay/SegmentationOverlay';
 import { PredictionCard } from '../components/PredictionCard/PredictionCard';
 import { apiClient } from '../services/api';
-import { InferenceResponse } from '../services/types';
+import type { InferenceResponse } from '../services/types';
 import './HomePage.css';
 
 export function HomePage() {

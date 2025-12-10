@@ -23,3 +23,33 @@ dist-ssr
 *.sln
 *.sw?
 dataset
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Backend specific
+backend/app/resources/uploads/
+backend/app/resources/artifacts/
+backend/app/resources/app.log
+backend/app/resources/checkpoints/*.pth
+backend/app/resources/checkpoints/**/*.pth
+
+# Environment
+.env
+.env.local

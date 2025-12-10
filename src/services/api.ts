@@ -1,8 +1,9 @@
 /**
  * API client for BTSC-UNet-ViT backend.
  */
-import axios, { AxiosInstance } from 'axios';
-import {
+import axios from 'axios';
+import type { AxiosInstance } from 'axios';
+import type {
   InferenceResponse,
   PreprocessResponse,
   SegmentResponse,
