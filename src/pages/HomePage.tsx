@@ -25,9 +25,10 @@ export function HomePage() {
       const response = await apiClient.runInference(file);
       console.log('[HomePage] Inference completed:', response);
       setResult(response);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[HomePage] Inference failed:', err);
-      setError(err.response?.data?.detail || 'Failed to process image. Please try again.');
+      const error = err as { response?: { data?: { detail?: string } } };
+      setError(error.response?.data?.detail || 'Failed to process image. Please try again.');
     } finally {
       setIsLoading(false);
     }

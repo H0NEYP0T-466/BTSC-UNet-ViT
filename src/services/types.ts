@@ -61,7 +61,7 @@ export interface InferenceResponse {
     probabilities: number[];
   };
   duration_seconds: number;
-  log_context: any;
+  log_context: Record<string, unknown>;
 }
 
 export interface HealthResponse {
