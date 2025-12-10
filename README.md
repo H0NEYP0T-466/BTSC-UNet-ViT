@@ -192,11 +192,13 @@ npm run build
 
 ### Backend
 - FastAPI
-- PyTorch
+- PyTorch 2.6.0+ (security patched)
 - timm (Vision Transformers)
-- MONAI (Medical imaging)
+- MONAI 1.5.1+ (security patched)
 - scikit-image
 - OpenCV
+
+**⚠️ Security Note:** PyTorch and MONAI have been updated to address critical vulnerabilities. See [SECURITY.md](SECURITY.md).
 
 ### Frontend
 - React 19

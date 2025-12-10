@@ -235,13 +235,19 @@ npm run build
 ### Backend (requirements.txt)
 - fastapi==0.115.5
 - uvicorn[standard]==0.32.1
-- torch==2.5.1
-- torchvision==0.20.1
+- torch==2.6.0 ⚠️ **Security Update** (was 2.5.1)
+- torchvision==0.21.0
 - timm==1.0.12
+- monai==1.5.1 ⚠️ **Security Update** (was 1.4.0)
 - opencv-python==4.10.0.84
 - scikit-image==0.24.0
 - pydantic==2.10.3
 - ...and more
+
+**Security Notes:** 
+- PyTorch updated from 2.5.1 to 2.6.0 to fix RCE vulnerability in `torch.load`
+- MONAI updated from 1.4.0 to 1.5.1 to fix pickle deserialization, arbitrary code execution, and path traversal vulnerabilities
+- See [SECURITY.md](../SECURITY.md) for full details
 
 ### Frontend (package.json)
 - react: ^19.2.0

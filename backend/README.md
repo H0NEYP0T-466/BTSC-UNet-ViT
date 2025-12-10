@@ -28,6 +28,9 @@ Preprocessing → UNet Segmentation → ViT Classification
 - Python 3.10+
 - CUDA (optional, for GPU acceleration)
 
+### ⚠️ Security Update
+**Critical:** This project requires PyTorch 2.6.0+ and MONAI 1.5.1+ to address security vulnerabilities. See [../SECURITY.md](../SECURITY.md) for details.
+
 ### Installation
 
 1. Create virtual environment:
