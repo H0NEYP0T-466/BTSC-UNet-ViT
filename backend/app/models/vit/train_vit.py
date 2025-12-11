@@ -200,7 +200,7 @@ class ViTTrainer:
 
 
 def main():
-    """Main training function (scaffold)."""
+    """Main training function."""
     # Set seed for reproducibility
     torch.manual_seed(settings.SEED)
     
@@ -210,14 +210,48 @@ def main():
         'stage': 'train_init'
     })
     
-    # TODO: Implement segmented dataset dataloader
-    logger.info("ViT training script scaffold - implement segmented dataset dataloader", extra={
+    # Check if dataset exists
+    if not settings.SEGMENTED_DATASET_ROOT.exists():
+        logger.error(
+            f"Dataset not found at {settings.SEGMENTED_DATASET_ROOT}. "
+            f"Please ensure the dataset is available.",
+            extra={'image_id': None, 'path': str(settings.SEGMENTED_DATASET_ROOT), 'stage': 'train_init'}
+        )
+        raise FileNotFoundError(f"Dataset not found: {settings.SEGMENTED_DATASET_ROOT}")
+    
+    logger.info(f"Loading dataset from {settings.SEGMENTED_DATASET_ROOT}", extra={
         'image_id': None,
-        'path': settings.SEGMENTED_DATASET_ROOT,
+        'path': str(settings.SEGMENTED_DATASET_ROOT),
         'stage': 'train_init'
     })
     
-    # Example: Create model
+    # Import datamodule
+    from app.models.vit.datamodule import create_vit_dataloaders
+    
+    # Create dataloaders
+    train_loader, val_loader = create_vit_dataloaders(
+        root_dir=settings.SEGMENTED_DATASET_ROOT,
+        batch_size=settings.BATCH_SIZE,
+        num_workers=settings.NUM_WORKERS,
+        train_split=0.8,
+        image_size=settings.VIT_IMAGE_SIZE,
+        augment=True
+    )
+    
+    logger.info(f"Dataloaders created: train batches={len(train_loader)}, val batches={len(val_loader)}", extra={
+        'image_id': None,
+        'path': None,
+        'stage': 'train_init'
+    })
+    
+    # Create model
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    logger.info(f"Using device: {device}", extra={
+        'image_id': None,
+        'path': None,
+        'stage': 'train_init'
+    })
+    
     model = get_vit_model()
     
     # Optionally freeze backbone initially
@@ -229,9 +263,17 @@ def main():
         'stage': 'train_init'
     })
     
-    # TODO: Create dataloaders and train
-    # trainer = ViTTrainer(model, train_loader, val_loader)
-    # trainer.train(settings.NUM_EPOCHS)
+    # Create trainer and train
+    trainer = ViTTrainer(
+        model=model,
+        train_loader=train_loader,
+        val_loader=val_loader,
+        device=device,
+        learning_rate=settings.LEARNING_RATE,
+        checkpoint_dir=settings.CHECKPOINTS_VIT
+    )
+    
+    trainer.train(settings.NUM_EPOCHS)
 
 
 if __name__ == "__main__":

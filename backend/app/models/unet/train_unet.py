@@ -180,7 +180,7 @@ class UNetTrainer:
 
 
 def main():
-    """Main training function (scaffold)."""
+    """Main training function."""
     # Set seed for reproducibility
     torch.manual_seed(settings.SEED)
     
@@ -190,15 +190,48 @@ def main():
         'stage': 'train_init'
     })
     
-    # TODO: Implement BraTS dataloader
-    # For now, this is a scaffold showing the training structure
-    logger.info("UNet training script scaffold - implement BraTS dataloader", extra={
+    # Check if dataset exists
+    if not settings.BRATS_ROOT.exists():
+        logger.error(
+            f"Dataset not found at {settings.BRATS_ROOT}. "
+            f"Please ensure the dataset is available.",
+            extra={'image_id': None, 'path': str(settings.BRATS_ROOT), 'stage': 'train_init'}
+        )
+        raise FileNotFoundError(f"Dataset not found: {settings.BRATS_ROOT}")
+    
+    logger.info(f"Loading dataset from {settings.BRATS_ROOT}", extra={
         'image_id': None,
-        'path': settings.BRATS_ROOT,
+        'path': str(settings.BRATS_ROOT),
         'stage': 'train_init'
     })
     
-    # Example: Create model
+    # Import datamodule
+    from app.models.unet.datamodule import create_unet_dataloaders
+    
+    # Create dataloaders
+    train_loader, val_loader = create_unet_dataloaders(
+        root_dir=settings.BRATS_ROOT,
+        batch_size=settings.BATCH_SIZE,
+        num_workers=settings.NUM_WORKERS,
+        train_split=0.8,
+        image_size=(256, 256),
+        transform=None  # Can add albumentations transforms here
+    )
+    
+    logger.info(f"Dataloaders created: train batches={len(train_loader)}, val batches={len(val_loader)}", extra={
+        'image_id': None,
+        'path': None,
+        'stage': 'train_init'
+    })
+    
+    # Create model
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    logger.info(f"Using device: {device}", extra={
+        'image_id': None,
+        'path': None,
+        'stage': 'train_init'
+    })
+    
     model = get_unet_model(
         in_channels=settings.UNET_IN_CHANNELS,
         out_channels=settings.UNET_OUT_CHANNELS,
@@ -211,9 +244,17 @@ def main():
         'stage': 'train_init'
     })
     
-    # TODO: Create dataloaders and train
-    # trainer = UNetTrainer(model, train_loader, val_loader)
-    # trainer.train(settings.NUM_EPOCHS)
+    # Create trainer and train
+    trainer = UNetTrainer(
+        model=model,
+        train_loader=train_loader,
+        val_loader=val_loader,
+        device=device,
+        learning_rate=settings.LEARNING_RATE,
+        checkpoint_dir=settings.CHECKPOINTS_UNET
+    )
+    
+    trainer.train(settings.NUM_EPOCHS)
 
 
 if __name__ == "__main__":

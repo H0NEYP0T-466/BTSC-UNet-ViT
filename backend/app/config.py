@@ -28,9 +28,9 @@ class Settings(BaseSettings):
     ARTIFACTS_DIR: Path = RESOURCES_DIR / "artifacts"
     
     # Dataset paths (configurable via environment variables)
-    DATASET_ROOT: str = "X:/file/FAST_API/BTSC-UNet-ViT/dataset"
-    SEGMENTED_DATASET_ROOT: str = "X:/file/FAST_API/BTSC-UNet-ViT/segmented_dataset"
-    BRATS_ROOT: str = "X:/data/BraTS"  # User should adjust this
+    DATASET_ROOT: Path = BASE_DIR.parent / "dataset"  # backend/dataset
+    SEGMENTED_DATASET_ROOT: Path = DATASET_ROOT / "Vit_Dataset"  # backend/dataset/Vit_Dataset
+    BRATS_ROOT: Path = DATASET_ROOT / "UNet_Dataset"  # backend/dataset/UNet_Dataset
     
     # Model checkpoints
     CHECKPOINTS_UNET: Path = CHECKPOINTS_DIR / "unet"

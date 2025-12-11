@@ -4,6 +4,7 @@ Provides structured logging with context fields throughout the application.
 """
 import logging
 import logging.config
+from pathlib import Path
 from typing import Any, Dict
 
 
@@ -28,6 +29,13 @@ def setup_logging(log_level: str = "INFO") -> None:
     Args:
         log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     """
+    # Create log file path relative to this file
+    base_dir = Path(__file__).resolve().parent
+    log_file_path = base_dir / "resources" / "app.log"
+    
+    # Ensure the directory exists
+    log_file_path.parent.mkdir(parents=True, exist_ok=True)
+    
     logging_config = {
         'version': 1,
         'disable_existing_loggers': False,
@@ -59,7 +67,7 @@ def setup_logging(log_level: str = "INFO") -> None:
                 'level': log_level,
                 'formatter': 'detailed',
                 'filters': ['context_filter'],
-                'filename': 'backend/app/resources/app.log',
+                'filename': str(log_file_path),
                 'mode': 'a',
                 'encoding': 'utf-8'
             }
