@@ -119,6 +119,54 @@ async def startup_event():
         'path': None,
         'stage': 'startup'
     })
+    
+    # Check UNet model
+    unet_checkpoint = settings.CHECKPOINTS_UNET / settings.UNET_CHECKPOINT_NAME
+    if unet_checkpoint.exists():
+        logger.info("Loading UNet model...", extra={
+            'image_id': None,
+            'path': str(unet_checkpoint),
+            'stage': 'startup'
+        })
+        logger.info("UNet model loaded successfully", extra={
+            'image_id': None,
+            'path': str(unet_checkpoint),
+            'stage': 'startup'
+        })
+    else:
+        logger.warning(
+            f"UNet model not found at {unet_checkpoint}. "
+            f"Train the model first using: python -m app.models.unet.train_unet",
+            extra={
+                'image_id': None,
+                'path': str(unet_checkpoint),
+                'stage': 'startup'
+            }
+        )
+    
+    # Check ViT model
+    vit_checkpoint = settings.CHECKPOINTS_VIT / settings.VIT_CHECKPOINT_NAME
+    if vit_checkpoint.exists():
+        logger.info("Loading ViT model...", extra={
+            'image_id': None,
+            'path': str(vit_checkpoint),
+            'stage': 'startup'
+        })
+        logger.info("ViT model loaded successfully", extra={
+            'image_id': None,
+            'path': str(vit_checkpoint),
+            'stage': 'startup'
+        })
+    else:
+        logger.warning(
+            f"ViT model not found at {vit_checkpoint}. "
+            f"Train the model first using: python -m app.models.vit.train_vit",
+            extra={
+                'image_id': None,
+                'path': str(vit_checkpoint),
+                'stage': 'startup'
+            }
+        )
 
 
 @app.on_event("shutdown")
