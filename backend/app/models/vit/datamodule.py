@@ -171,32 +171,35 @@ def create_vit_dataloaders(
     # Get transforms
     train_transform, val_transform = get_vit_transforms(image_size, augment)
     
-    # Create full dataset with training transforms
-    full_dataset = ViTDataset(
+    # Create datasets with respective transforms
+    train_dataset_full = ViTDataset(
         root_dir=root_dir,
         transform=train_transform,
         image_size=image_size
     )
     
-    # Split into train and validation
-    train_size = int(train_split * len(full_dataset))
-    val_size = len(full_dataset) - train_size
-    
-    train_dataset, val_dataset_temp = random_split(
-        full_dataset,
-        [train_size, val_size],
-        generator=torch.Generator().manual_seed(settings.SEED)
-    )
-    
-    # Create validation dataset with val transforms
-    val_dataset = ViTDataset(
+    val_dataset_full = ViTDataset(
         root_dir=root_dir,
         transform=val_transform,
         image_size=image_size
     )
     
-    # Use the same indices for validation
-    val_dataset = torch.utils.data.Subset(val_dataset, val_dataset_temp.indices)
+    # Split indices
+    total_size = len(train_dataset_full)
+    indices = list(range(total_size))
+    train_size = int(train_split * total_size)
+    
+    # Set random seed for reproducible split
+    import random
+    random.seed(settings.SEED)
+    random.shuffle(indices)
+    
+    train_indices = indices[:train_size]
+    val_indices = indices[train_size:]
+    
+    # Create subsets
+    train_dataset = torch.utils.data.Subset(train_dataset_full, train_indices)
+    val_dataset = torch.utils.data.Subset(val_dataset_full, val_indices)
     
     # Create dataloaders
     train_loader = DataLoader(

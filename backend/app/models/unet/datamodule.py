@@ -106,34 +106,8 @@ class UNetDataset(Dataset):
                                 mask_data = f[available_keys[1]][:]
                     
                     if image_data is not None:
-                        # Handle different data shapes
-                        # Assuming shapes like (N, H, W) or (N, H, W, C) or (N, C, H, W)
-                        if len(image_data.shape) == 3:
-                            # (N, H, W) - add channel dimension
-                            for i in range(len(image_data)):
-                                all_images.append(image_data[i])
-                                if mask_data is not None and i < len(mask_data):
-                                    all_masks.append(mask_data[i])
-                                else:
-                                    # Create empty mask if not available
-                                    all_masks.append(np.zeros_like(image_data[i]))
-                        elif len(image_data.shape) == 4:
-                            # (N, H, W, C) or (N, C, H, W)
-                            for i in range(len(image_data)):
-                                all_images.append(image_data[i])
-                                if mask_data is not None and i < len(mask_data):
-                                    all_masks.append(mask_data[i])
-                                else:
-                                    # Create empty mask
-                                    if image_data.shape[-1] in [1, 3, 4]:  # (N, H, W, C)
-                                        all_masks.append(np.zeros(image_data[i].shape[:2]))
-                                    else:  # (N, C, H, W)
-                                        all_masks.append(np.zeros(image_data[i].shape[1:]))
-                        else:
-                            logger.warning(
-                                f"Unexpected image shape in {h5_path.name}: {image_data.shape}",
-                                extra={'image_id': None, 'path': str(h5_path), 'stage': 'dataset_load'}
-                            )
+                        # Process images and masks
+                        self._process_h5_data(image_data, mask_data, all_images, all_masks)
                 
                 logger.info(f"Loaded {h5_path.name}: {len(all_images)} samples so far", extra={
                     'image_id': None, 'path': str(h5_path), 'stage': 'dataset_load'
@@ -145,6 +119,51 @@ class UNetDataset(Dataset):
                 })
         
         return all_images, all_masks
+    
+    def _process_h5_data(
+        self,
+        image_data: np.ndarray,
+        mask_data: Optional[np.ndarray],
+        all_images: list,
+        all_masks: list
+    ) -> None:
+        """
+        Process image and mask data from h5 file and append to lists.
+        
+        Args:
+            image_data: Image array from h5 file
+            mask_data: Mask array from h5 file (can be None)
+            all_images: List to append processed images
+            all_masks: List to append processed masks
+        """
+        # Handle different data shapes
+        # Assuming shapes like (N, H, W) or (N, H, W, C) or (N, C, H, W)
+        if len(image_data.shape) == 3:
+            # (N, H, W)
+            for i in range(len(image_data)):
+                all_images.append(image_data[i])
+                if mask_data is not None and i < len(mask_data):
+                    all_masks.append(mask_data[i])
+                else:
+                    # Create empty mask if not available
+                    all_masks.append(np.zeros_like(image_data[i]))
+        elif len(image_data.shape) == 4:
+            # (N, H, W, C) or (N, C, H, W)
+            for i in range(len(image_data)):
+                all_images.append(image_data[i])
+                if mask_data is not None and i < len(mask_data):
+                    all_masks.append(mask_data[i])
+                else:
+                    # Create empty mask
+                    if image_data.shape[-1] in [1, 3, 4]:  # (N, H, W, C)
+                        all_masks.append(np.zeros(image_data[i].shape[:2]))
+                    else:  # (N, C, H, W)
+                        all_masks.append(np.zeros(image_data[i].shape[1:]))
+        else:
+            logger.warning(
+                f"Unexpected image shape: {image_data.shape}",
+                extra={'image_id': None, 'path': None, 'stage': 'dataset_load'}
+            )
     
     def __len__(self) -> int:
         return len(self.data)

@@ -72,7 +72,7 @@ backend/
 │   │   ├── *.h5               # H5 files containing images and masks
 │   │   └── ...
 │   └── Vit_Dataset/           # For ViT classification training
-│       ├── giloma/            # Class folders
+│       ├── glioma/            # Class folders
 │       │   ├── *.jpg
 │       │   └── ...
 │       ├── meningioma/

@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     VIT_MODEL_NAME: str = "vit_base_patch16_224"
     VIT_NUM_CLASSES: int = 4
     VIT_IMAGE_SIZE: int = 224
-    VIT_CLASS_NAMES: List[str] = ["no_tumor", "giloma", "meningioma", "pituitary"]
+    VIT_CLASS_NAMES: List[str] = ["no_tumor", "glioma", "meningioma", "pituitary"]
     
     # Training settings
     BATCH_SIZE: int = 8
