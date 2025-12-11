@@ -11,7 +11,7 @@ import type {
   HealthResponse
 } from './types';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 class ApiClient {
   private client: AxiosInstance;
