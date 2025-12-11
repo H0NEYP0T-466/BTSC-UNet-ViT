@@ -56,40 +56,72 @@ cp .env.example .env
 
 Edit `app/config.py` or set environment variables:
 
-- `DATASET_ROOT`: Path to 90k image dataset (X:/file/FAST_API/BTSC-UNet-ViT/dataset)
-- `BRATS_ROOT`: Path to BraTS dataset for UNet training
-- `SEGMENTED_DATASET_ROOT`: Output path for segmented dataset
+- `DATASET_ROOT`: Path to dataset folder (defaults to `backend/dataset`)
+- `BRATS_ROOT`: Path to UNet dataset with .h5 files (defaults to `backend/dataset/UNet_Dataset`)
+- `SEGMENTED_DATASET_ROOT`: Path to ViT classification dataset (defaults to `backend/dataset/Vit_Dataset`)
 - `LOG_LEVEL`: Logging level (DEBUG, INFO, WARNING, ERROR)
+
+### Dataset Structure
+
+Place your datasets in the following structure:
+
+```
+backend/
+├── dataset/
+│   ├── UNet_Dataset/          # For UNet segmentation training
+│   │   ├── *.h5               # H5 files containing images and masks
+│   │   └── ...
+│   └── Vit_Dataset/           # For ViT classification training
+│       ├── giloma/            # Class folders
+│       │   ├── *.jpg
+│       │   └── ...
+│       ├── meningioma/
+│       ├── notumor/
+│       └── pituitary/
+```
 
 ## Training
 
-### UNet Training (on BraTS dataset)
+### UNet Training (on .h5 dataset)
 
-1. Prepare BraTS dataset at `BRATS_ROOT`
-2. Implement dataloader in `app/models/unet/datamodule.py`
-3. Run training:
+1. Place your .h5 files in `backend/dataset/UNet_Dataset/`
+   - Each .h5 file should contain image and mask data
+   - Supported keys: 'image', 'images', 'data', 'X' for images
+   - Supported keys: 'mask', 'masks', 'label', 'segmentation' for masks
+
+2. Run training:
 ```bash
+cd backend
 python -m app.models.unet.train_unet
 ```
 
 Checkpoints saved to: `app/resources/checkpoints/unet/`
+- Best model: `unet_best.pth`
+- Last checkpoint: `unet_last.pth`
 
-### ViT Training (on segmented images)
+### ViT Training (on classified images)
 
-1. Preprocess and segment the 90k dataset:
-```python
-from app.services.dataset_service import get_dataset_service
-service = get_dataset_service()
-service.preprocess_and_segment_dataset()
-```
+1. Organize your images into class folders in `backend/dataset/Vit_Dataset/`:
+   - `giloma/` - Glioma tumor images
+   - `meningioma/` - Meningioma tumor images
+   - `notumor/` - No tumor images
+   - `pituitary/` - Pituitary tumor images
 
-2. Implement dataloader in `app/models/vit/datamodule.py`
-3. Run training:
+2. Run training:
 ```bash
+cd backend
 python -m app.models.vit.train_vit
 ```
 
 Checkpoints saved to: `app/resources/checkpoints/vit/`
+- Best model: `vit_best.pth`
+- Last checkpoint: `vit_last.pth`
+
+**Note:** The training scripts will automatically:
+- Create train/validation splits (80/20)
+- Apply data augmentation for training
+- Save checkpoints after each epoch
+- Log detailed metrics and progress
 
 ## Running the Server
 
