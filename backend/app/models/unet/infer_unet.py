@@ -91,7 +91,7 @@ class UNetInference:
             image: Input image (grayscale, H x W)
             
         Returns:
-            Preprocessed tensor (1, 1, H, W)
+            Preprocessed tensor (1, C, H, W) where C matches model's in_channels
         """
         # Ensure grayscale
         if len(image.shape) == 3:
@@ -100,8 +100,18 @@ class UNetInference:
         # Normalize to [0, 1]
         image_normalized = image.astype(np.float32) / 255.0
         
-        # Convert to tensor and add batch and channel dimensions
-        tensor = torch.from_numpy(image_normalized).unsqueeze(0).unsqueeze(0)
+        # Convert to tensor and add batch dimension
+        tensor = torch.from_numpy(image_normalized).unsqueeze(0)  # (1, H, W)
+        
+        # Replicate single channel to match model's expected input channels
+        # If model expects 4 channels (e.g., trained on BraTS with 4 modalities),
+        # we replicate the grayscale image across all channels
+        in_channels = settings.UNET_IN_CHANNELS
+        if in_channels > 1:
+            tensor = tensor.repeat(in_channels, 1, 1)  # (C, H, W)
+        
+        # Add batch dimension
+        tensor = tensor.unsqueeze(0)  # (1, C, H, W)
         
         return tensor.to(self.device)
     

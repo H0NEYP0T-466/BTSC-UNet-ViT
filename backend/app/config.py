@@ -64,8 +64,8 @@ class Settings(BaseSettings):
     VIT_CLASS_NAMES: List[str] = ["no_tumor", "glioma", "meningioma", "pituitary"]
 
     # Training settings
-    BATCH_SIZE: int = 8
-    NUM_EPOCHS: int = 100
+    BATCH_SIZE: int = 32  # ✅ FIXED - Increased from 8 to 32 for better GPU utilization
+    NUM_EPOCHS: int = 20  # ✅ FIXED - Reduced from 100 to 20 for faster training
     LEARNING_RATE:  float = 1e-4
     NUM_WORKERS: int = 2  # ✅ FIXED - Reduced from 4 to 2 (per system warning)
     SEED: int = 42
