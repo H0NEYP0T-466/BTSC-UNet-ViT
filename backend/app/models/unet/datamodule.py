@@ -104,7 +104,7 @@ class UNetDataset(Dataset):
                     
                     if image_key is not None:
                         # Get the number of samples without loading data
-                        num_samples = len(f[image_key])
+                        num_samples = f[image_key].shape[0]
                         
                         # Add index entries for each sample in this file
                         for i in range(num_samples):
@@ -127,6 +127,11 @@ class UNetDataset(Dataset):
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Get item by index. Loads data on-demand from h5 file.
+        
+        Note: Each call opens the h5 file, loads the sample, and closes it.
+        This is acceptable because h5py is efficient at file access, and
+        PyTorch DataLoader workers run in separate processes, making it
+        difficult to share file handles safely.
         
         Returns:
             Tuple of (image_tensor, mask_tensor)
