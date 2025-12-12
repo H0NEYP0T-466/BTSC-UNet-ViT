@@ -9,26 +9,6 @@ import os
 import sys
 from pathlib import Path
 import torch
-import urllib.request
-from tqdm import tqdm
-
-
-def download_with_progress(url: str, destination: Path):
-    """Download file with progress bar."""
-    
-    class DownloadProgressBar(tqdm):
-        def update_to(self, b=1, bsize=1, tsize=None):
-            if tsize is not None:
-                self.total = tsize
-            self.update(b * bsize - self.n)
-    
-    print(f"Downloading from {url}")
-    print(f"Saving to {destination}")
-    
-    with DownloadProgressBar(unit='B', unit_scale=True, miniters=1, desc="Downloading") as t:
-        urllib.request.urlretrieve(url, filename=destination, reporthook=t.update_to)
-    
-    print(f"✓ Download complete: {destination}")
 
 
 def download_pretrained_model():

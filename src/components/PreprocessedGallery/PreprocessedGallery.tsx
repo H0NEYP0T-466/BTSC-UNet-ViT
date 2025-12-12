@@ -6,14 +6,22 @@ interface PreprocessedGalleryProps {
   };
 }
 
+interface Stage {
+  key: string;
+  label: string;
+  isFinal?: boolean;
+}
+
 export function PreprocessedGallery({ images }: PreprocessedGalleryProps) {
-  const stages = [
+  const FINAL_STAGE = 'normalized';
+  
+  const stages: Stage[] = [
     { key: 'grayscale', label: 'Grayscale' },
     { key: 'denoised', label: 'Denoised' },
     { key: 'motion_reduced', label: 'Motion Reduced' },
     { key: 'contrast', label: 'Contrast Enhanced' },
     { key: 'sharpened', label: 'Sharpened' },
-    { key: 'normalized', label: 'Normalized (Final)', isFinal: true },
+    { key: FINAL_STAGE, label: 'Normalized (Final)', isFinal: true },
   ];
 
   return (

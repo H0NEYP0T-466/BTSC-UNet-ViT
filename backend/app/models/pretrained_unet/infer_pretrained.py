@@ -74,7 +74,17 @@ class PretrainedUNetInference:
                 'stage': 'pretrained_unet_load'
             })
             
-            checkpoint = torch.load(self.checkpoint_path, map_location=self.device, weights_only=True)
+            # Load with weights_only for security (PyTorch >= 1.13)
+            try:
+                checkpoint = torch.load(self.checkpoint_path, map_location=self.device, weights_only=True)
+            except TypeError:
+                # Fallback for older PyTorch versions (< 1.13)
+                logger.warning("Using legacy torch.load (PyTorch < 1.13). Consider upgrading for security.", extra={
+                    'image_id': None,
+                    'path': self.checkpoint_path,
+                    'stage': 'pretrained_unet_load'
+                })
+                checkpoint = torch.load(self.checkpoint_path, map_location=self.device)
             
             if 'model_state_dict' in checkpoint:
                 model.load_state_dict(checkpoint['model_state_dict'])
@@ -130,20 +140,28 @@ class PretrainedUNetInference:
     def postprocess_mask(
         self,
         output: torch.Tensor,
-        threshold: float = 0.5,
-        min_area: int = 100
+        threshold: Optional[float] = None,
+        min_area: Optional[int] = None
     ) -> np.ndarray:
         """
         Postprocess model output to binary mask with improved tumor detection.
         
         Args:
             output: Model output tensor
-            threshold: Threshold for binarization
-            min_area: Minimum area for connected components (removes small noise)
+            threshold: Threshold for binarization (default from settings)
+            min_area: Minimum area for connected components (default from settings)
             
         Returns:
             Binary mask (H, W) with only tumor regions
         """
+        from app.config import settings
+        
+        # Use config defaults if not provided
+        if threshold is None:
+            threshold = settings.SEGMENTATION_THRESHOLD
+        if min_area is None:
+            min_area = settings.SEGMENTATION_MIN_AREA
+        
         # Apply sigmoid and threshold
         mask = torch.sigmoid(output).cpu().numpy()[0, 0]
         binary_mask = (mask > threshold).astype(np.uint8) * 255
@@ -173,7 +191,7 @@ class PretrainedUNetInference:
         self,
         image: np.ndarray,
         image_id: Optional[str] = None,
-        threshold: float = 0.5
+        threshold: Optional[float] = None
     ) -> Dict[str, np.ndarray]:
         """
         Segment brain tumor in image using pretrained UNet.
@@ -181,7 +199,7 @@ class PretrainedUNetInference:
         Args:
             image: Input image (preprocessed, grayscale)
             image_id: Image identifier for logging
-            threshold: Threshold for binary classification
+            threshold: Threshold for binary classification (default from settings)
             
         Returns:
             Dictionary with 'mask', 'overlay', and 'segmented' images
@@ -200,8 +218,8 @@ class PretrainedUNetInference:
         with torch.no_grad():
             output = self.model(input_tensor)
         
-        # Postprocess with improved tumor detection
-        mask = self.postprocess_mask(output, threshold=threshold, min_area=100)
+        # Postprocess with improved tumor detection (uses config defaults)
+        mask = self.postprocess_mask(output, threshold=threshold)
         
         # Calculate mask statistics
         mask_area_pct = (np.sum(mask > 0) / mask.size) * 100

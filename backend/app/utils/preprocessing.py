@@ -366,7 +366,11 @@ def preprocess_pipeline(
     )
     
     # Step 3: Reduce motion artifacts
-    motion_reduced = reduce_motion_artifact(denoised, image_id=image_id)
+    motion_reduced = reduce_motion_artifact(
+        denoised, 
+        image_id=image_id,
+        preserve_detail=config.get('preserve_detail', True)
+    )
     
     # Step 4: Enhance contrast
     contrast = enhance_contrast_clahe(

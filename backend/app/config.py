@@ -82,6 +82,11 @@ class Settings(BaseSettings):
     NLM_H: int = 10
     UNSHARP_RADIUS: float = 1.0
     UNSHARP_AMOUNT: float = 1.0
+    MOTION_PRESERVE_DETAIL: bool = True  # Use edge-preserving bilateral filter
+    
+    # Segmentation post-processing parameters
+    SEGMENTATION_MIN_AREA: int = 100  # Minimum area for connected components (pixels)
+    SEGMENTATION_THRESHOLD: float = 0.5  # Threshold for binary segmentation
 
     class Config:
         env_file = ".env"

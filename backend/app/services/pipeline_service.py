@@ -95,6 +95,7 @@ class PipelineService:
             'clahe_tile_grid_size': settings.CLAHE_TILE_GRID_SIZE,
             'unsharp_radius': settings.UNSHARP_RADIUS,
             'unsharp_amount': settings.UNSHARP_AMOUNT,
+            'preserve_detail': settings.MOTION_PRESERVE_DETAIL,
             'normalize_method': 'zscore'
         }
         
