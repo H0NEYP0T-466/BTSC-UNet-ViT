@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 class UNetDataset(Dataset):
     """
     Brain tumor segmentation dataset for UNet.
-    Loads images and masks from .h5 files.
+    Loads images and masks from .h5 files on-demand (lazy loading).
     """
     
     def __init__(
@@ -29,7 +29,7 @@ class UNetDataset(Dataset):
         image_size: Tuple[int, int] = (256, 256)
     ):
         """
-        Initialize UNet dataset.
+        Initialize UNet dataset with lazy loading.
         
         Args:
             root_dir: Root directory containing .h5 files
@@ -47,136 +47,114 @@ class UNetDataset(Dataset):
             logger.warning(f"No .h5 files found in {root_dir}", extra={
                 'image_id': None, 'path': str(root_dir), 'stage': 'dataset_init'
             })
-            self.data = []
-            self.masks = []
+            self.sample_indices = []
         else:
-            # Load all data into memory (if files are not too large)
-            # Alternatively, store file paths and load on-demand
-            self.data, self.masks = self._load_h5_files()
+            # Build index mapping without loading data into memory
+            self.sample_indices = self._build_index()
         
         logger.info(
-            f"UNet Dataset initialized: {len(self.data)} samples from {len(self.h5_files)} "
+            f"UNet Dataset initialized: {len(self.sample_indices)} samples from {len(self.h5_files)} "
             f".h5 files in {root_dir}",
             extra={'image_id': None, 'path': str(root_dir), 'stage': 'dataset_init'}
         )
     
-    def _load_h5_files(self) -> Tuple[list, list]:
+    def _build_index(self) -> list:
         """
-        Load all .h5 files into memory.
+        Build index mapping from global index to (file_path, local_index).
+        This scans h5 files to get their shapes without loading data into memory.
         
         Returns:
-            Tuple of (images_list, masks_list)
+            List of tuples: [(file_path, local_index, image_key, mask_key), ...]
         """
-        all_images = []
-        all_masks = []
+        sample_indices = []
         
         for h5_path in self.h5_files:
             try:
                 with h5py.File(h5_path, 'r') as f:
                     # Try common key names for images and masks
-                    # Adjust these based on actual .h5 file structure
                     image_keys = ['image', 'images', 'data', 'X', 'input']
                     mask_keys = ['mask', 'masks', 'label', 'labels', 'y', 'target', 'segmentation']
                     
-                    # Find image data
-                    image_data = None
+                    # Find image dataset
+                    image_key = None
                     for key in image_keys:
                         if key in f.keys():
-                            image_data = f[key][:]
+                            image_key = key
                             break
                     
-                    # Find mask data
-                    mask_data = None
+                    # Find mask dataset
+                    mask_key = None
                     for key in mask_keys:
                         if key in f.keys():
-                            mask_data = f[key][:]
+                            mask_key = key
                             break
                     
-                    if image_data is None:
+                    if image_key is None:
                         # If no standard keys found, use first dataset
                         available_keys = list(f.keys())
                         logger.warning(
                             f"Standard image keys not found in {h5_path.name}. "
                             f"Available keys: {available_keys}. Using first key.",
-                            extra={'image_id': None, 'path': str(h5_path), 'stage': 'dataset_load'}
+                            extra={'image_id': None, 'path': str(h5_path), 'stage': 'dataset_index'}
                         )
                         if available_keys:
-                            image_data = f[available_keys[0]][:]
+                            image_key = available_keys[0]
                             if len(available_keys) > 1:
-                                mask_data = f[available_keys[1]][:]
+                                mask_key = available_keys[1]
                     
-                    if image_data is not None:
-                        # Process images and masks
-                        self._process_h5_data(image_data, mask_data, all_images, all_masks)
-                
-                logger.info(f"Loaded {h5_path.name}: {len(all_images)} samples so far", extra={
-                    'image_id': None, 'path': str(h5_path), 'stage': 'dataset_load'
-                })
+                    if image_key is not None:
+                        # Get the number of samples without loading data
+                        num_samples = f[image_key].shape[0]
+                        
+                        # Add index entries for each sample in this file
+                        for i in range(num_samples):
+                            sample_indices.append((h5_path, i, image_key, mask_key))
+                        
+                        logger.info(f"Indexed {h5_path.name}: {num_samples} samples", extra={
+                            'image_id': None, 'path': str(h5_path), 'stage': 'dataset_index'
+                        })
                 
             except Exception as e:
-                logger.error(f"Error loading {h5_path}: {e}", extra={
-                    'image_id': None, 'path': str(h5_path), 'stage': 'dataset_load'
+                logger.error(f"Error indexing {h5_path}: {e}", extra={
+                    'image_id': None, 'path': str(h5_path), 'stage': 'dataset_index'
                 })
         
-        return all_images, all_masks
-    
-    def _process_h5_data(
-        self,
-        image_data: np.ndarray,
-        mask_data: Optional[np.ndarray],
-        all_images: list,
-        all_masks: list
-    ) -> None:
-        """
-        Process image and mask data from h5 file and append to lists.
-        
-        Args:
-            image_data: Image array from h5 file
-            mask_data: Mask array from h5 file (can be None)
-            all_images: List to append processed images
-            all_masks: List to append processed masks
-        """
-        # Handle different data shapes
-        # Assuming shapes like (N, H, W) or (N, H, W, C) or (N, C, H, W)
-        if len(image_data.shape) == 3:
-            # (N, H, W)
-            for i in range(len(image_data)):
-                all_images.append(image_data[i])
-                if mask_data is not None and i < len(mask_data):
-                    all_masks.append(mask_data[i])
-                else:
-                    # Create empty mask if not available
-                    all_masks.append(np.zeros_like(image_data[i]))
-        elif len(image_data.shape) == 4:
-            # (N, H, W, C) or (N, C, H, W)
-            for i in range(len(image_data)):
-                all_images.append(image_data[i])
-                if mask_data is not None and i < len(mask_data):
-                    all_masks.append(mask_data[i])
-                else:
-                    # Create empty mask
-                    if image_data.shape[-1] in [1, 3, 4]:  # (N, H, W, C)
-                        all_masks.append(np.zeros(image_data[i].shape[:2]))
-                    else:  # (N, C, H, W)
-                        all_masks.append(np.zeros(image_data[i].shape[1:]))
-        else:
-            logger.warning(
-                f"Unexpected image shape: {image_data.shape}",
-                extra={'image_id': None, 'path': None, 'stage': 'dataset_load'}
-            )
+        return sample_indices
     
     def __len__(self) -> int:
-        return len(self.data)
+        return len(self.sample_indices)
     
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Get item by index.
+        Get item by index. Loads data on-demand from h5 file.
+        
+        Note: Each call opens the h5 file, loads the sample, and closes it.
+        This is acceptable because h5py is efficient at file access, and
+        PyTorch DataLoader workers run in separate processes, making it
+        difficult to share file handles safely.
         
         Returns:
             Tuple of (image_tensor, mask_tensor)
         """
-        image = self.data[idx]
-        mask = self.masks[idx]
+        # Get file path and local index
+        h5_path, local_idx, image_key, mask_key = self.sample_indices[idx]
+        
+        # Load the specific sample from the h5 file
+        with h5py.File(h5_path, 'r') as f:
+            image = f[image_key][local_idx]
+            
+            # Load mask if available
+            if mask_key is not None and mask_key in f:
+                mask = f[mask_key][local_idx]
+            else:
+                # Create empty mask if not available
+                if len(image.shape) == 2:  # (H, W)
+                    mask = np.zeros(image.shape, dtype=np.float32)
+                elif len(image.shape) == 3:
+                    if image.shape[0] in [1, 3, 4]:  # (C, H, W)
+                        mask = np.zeros(image.shape[1:], dtype=np.float32)
+                    else:  # (H, W, C)
+                        mask = np.zeros(image.shape[:2], dtype=np.float32)
         
         # Ensure image is 2D (grayscale) - take first channel if multi-channel
         if len(image.shape) == 3:
