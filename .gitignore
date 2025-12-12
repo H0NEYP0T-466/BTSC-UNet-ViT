@@ -49,6 +49,7 @@ backend/app/resources/artifacts/
 backend/app/resources/app.log
 backend/app/resources/checkpoints/*.pth
 backend/app/resources/checkpoints/**/*.pth
+resources
 
 # Environment
 .env
