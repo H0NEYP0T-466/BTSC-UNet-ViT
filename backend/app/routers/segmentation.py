@@ -8,6 +8,7 @@ from app.schemas.responses import SegmentResponse, LogContext
 from app.utils.preprocessing import preprocess_pipeline
 from app.utils.imaging import bytes_to_numpy
 from app.models.unet.infer_unet import get_unet_inference
+from app.models.pretrained_unet.infer_pretrained import get_pretrained_unet_inference
 from app.services.storage_service import get_storage_service
 from app.config import settings
 from app.utils.logger import get_logger
@@ -57,8 +58,12 @@ async def segment_image(file: UploadFile = File(...)):
             'stage': 'segment'
         })
         
-        # Segment
-        unet = get_unet_inference()
+        # Segment using appropriate model
+        if settings.USE_PRETRAINED_UNET:
+            unet = get_pretrained_unet_inference()
+        else:
+            unet = get_unet_inference()
+        
         segmentation = unet.segment_image(normalized, image_id=image_id)
         
         # Calculate mask statistics

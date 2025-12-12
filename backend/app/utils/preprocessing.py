@@ -220,31 +220,47 @@ def unsharp_mask(
 
 def reduce_motion_artifact(
     image: np.ndarray,
-    image_id: Optional[str] = None
+    image_id: Optional[str] = None,
+    preserve_detail: bool = True
 ) -> np.ndarray:
     """
-    Reduce motion artifacts using deblurring heuristic.
+    Reduce motion artifacts with improved edge preservation.
     
     Args:
         image: Input grayscale image
         image_id: Image identifier for logging
+        preserve_detail: If True, uses edge-preserving bilateral filter (recommended)
         
     Returns:
         Motion-corrected image
     """
     start_time = time.time()
-    logger.info("Reducing motion artifacts", extra={
+    logger.info("Reducing motion artifacts with edge preservation", extra={
         'image_id': image_id,
         'path': None,
         'stage': 'motion_reduction'
     })
     
-    # Simple deconvolution kernel approach
-    kernel = np.ones((5, 5), np.float32) / 25
-    deblurred = cv2.filter2D(image, -1, kernel)
-    
-    # Apply bilateral filter for edge preservation
-    deblurred = cv2.bilateralFilter(deblurred, 9, 75, 75)
+    if preserve_detail:
+        # Use bilateral filter only (edge-preserving smoothing)
+        # This reduces noise while preserving edges, crucial for tumor detection
+        # Parameters: d=5 (smaller neighborhood), sigmaColor=50, sigmaSpace=50
+        deblurred = cv2.bilateralFilter(image, 5, 50, 50)
+        logger.info("Applied edge-preserving bilateral filter", extra={
+            'image_id': image_id,
+            'path': None,
+            'stage': 'motion_reduction'
+        })
+    else:
+        # Original approach (more aggressive blur)
+        kernel = np.ones((5, 5), np.float32) / 25
+        deblurred = cv2.filter2D(image, -1, kernel)
+        deblurred = cv2.bilateralFilter(deblurred, 9, 75, 75)
+        logger.info("Applied standard motion reduction", extra={
+            'image_id': image_id,
+            'path': None,
+            'stage': 'motion_reduction'
+        })
     
     duration = time.time() - start_time
     logger.info(f"Motion artifact reduction completed in {duration:.3f}s", extra={

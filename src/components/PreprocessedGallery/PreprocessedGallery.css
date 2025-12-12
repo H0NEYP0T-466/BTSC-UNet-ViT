@@ -20,6 +20,11 @@
   align-items: center;
 }
 
+.gallery-item-final .gallery-image-container {
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 20px rgba(0, 194, 255, 0.3);
+}
+
 .gallery-image-container {
   width: 100%;
   aspect-ratio: 1;
@@ -31,6 +36,7 @@
   justify-content: center;
   border: 1px solid var(--border-color);
   transition: transform 0.2s ease;
+  position: relative;
 }
 
 .gallery-image-container:hover {
@@ -44,9 +50,29 @@
   object-fit: cover;
 }
 
+.final-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background-color: var(--accent);
+  color: #111;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(0, 194, 255, 0.4);
+}
+
 .gallery-label {
   color: var(--text-secondary);
   font-size: var(--font-size-sm);
   margin-top: var(--spacing-sm);
   text-align: center;
+}
+
+.gallery-item-final .gallery-label {
+  color: var(--accent);
+  font-weight: bold;
 }
