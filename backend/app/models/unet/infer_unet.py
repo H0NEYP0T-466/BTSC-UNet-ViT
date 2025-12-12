@@ -100,15 +100,17 @@ class UNetInference:
         # Normalize to [0, 1]
         image_normalized = image.astype(np.float32) / 255.0
         
-        # Convert to tensor and add batch dimension
-        tensor = torch.from_numpy(image_normalized).unsqueeze(0)  # (1, H, W)
+        # Convert to tensor (H, W)
+        tensor = torch.from_numpy(image_normalized)
         
         # Replicate single channel to match model's expected input channels
         # If model expects 4 channels (e.g., trained on BraTS with 4 modalities),
         # we replicate the grayscale image across all channels
         in_channels = settings.UNET_IN_CHANNELS
         if in_channels > 1:
-            tensor = tensor.repeat(in_channels, 1, 1)  # (C, H, W)
+            tensor = tensor.unsqueeze(0).repeat(in_channels, 1, 1)  # (C, H, W)
+        else:
+            tensor = tensor.unsqueeze(0)  # (1, H, W)
         
         # Add batch dimension
         tensor = tensor.unsqueeze(0)  # (1, C, H, W)
