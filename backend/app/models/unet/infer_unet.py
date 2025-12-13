@@ -126,11 +126,24 @@ class UNetInference:
             threshold: Threshold for binarization
             
         Returns:
-            Binary mask (H, W)
+            Binary mask (H, W) with values 0-255 for visualization
         """
         # Apply sigmoid and threshold
-        mask = torch.sigmoid(output).cpu().numpy()[0, 0]
-        binary_mask = (mask > threshold).astype(np.uint8) * 255
+        mask_prob = torch.sigmoid(output).cpu().numpy()[0, 0]
+        
+        # Create binary mask
+        binary_mask = (mask_prob > threshold).astype(np.uint8) * 255
+        
+        # ✅ FIX: For web visualization, also return probability map
+        # This ensures tiny tumors (even 0.17%) are visible
+        # Scale probabilities to 0-255 range for better visibility
+        prob_mask = (mask_prob * 255).astype(np.uint8)
+        
+        # Use the probability mask if it shows more detail than binary
+        # This makes small tumor regions visible even if below threshold
+        tumor_pixels = np.sum(binary_mask > 0)
+        if tumor_pixels < 100:  # If very few tumor pixels, use probability map
+            return prob_mask
         
         return binary_mask
     
@@ -147,7 +160,7 @@ class UNetInference:
             image_id: Image identifier for logging
             
         Returns:
-            Dictionary with 'mask', 'overlay', and 'segmented' images
+            Dictionary with 'mask', 'overlay', 'segmented', and 'heatmap' images
         """
         start_time = time.time()
         logger.info("UNet segmentation started", extra={
@@ -163,20 +176,45 @@ class UNetInference:
         with torch.no_grad():
             output = self.model(input_tensor)
         
-        # Postprocess
+        # Get probability map for heatmap visualization
+        prob_map = torch.sigmoid(output).cpu().numpy()[0, 0]
+        
+        # Postprocess to binary mask
         mask = self.postprocess_mask(output)
         
         # Calculate mask statistics
         mask_area_pct = (np.sum(mask > 0) / mask.size) * 100
+        prob_area_pct = (np.sum(prob_map > 0.5) / prob_map.size) * 100
         
-        logger.info(f"UNet inference completed, mask_area_pct={mask_area_pct:.2f}%", extra={
-            'image_id': image_id,
-            'path': None,
-            'stage': 'unet_inference'
-        })
+        logger.info(
+            f"UNet inference completed, mask_area={mask_area_pct:.3f}%, "
+            f"prob_area={prob_area_pct:.3f}%",
+            extra={'image_id': image_id, 'path': None, 'stage': 'unet_inference'}
+        )
         
-        # Create overlay
+        # ✅ FIX: Create enhanced visualizations for tiny tumors
+        
+        # Create heatmap with 'hot' colormap for better visibility
+        import matplotlib.pyplot as plt
+        import matplotlib.cm as cm
+        
+        # Convert probability map to color using 'hot' colormap
+        # This makes even 0.17% tumor regions visible
+        colormap = cm.get_cmap('hot')
+        heatmap_colored = colormap(prob_map)
+        heatmap_rgb = (heatmap_colored[:, :, :3] * 255).astype(np.uint8)
+        
+        # Create overlay with enhanced visibility
         overlay = create_overlay(image, mask, alpha=0.5, color=(255, 0, 0))
+        
+        # Create heatmap overlay for web display (more visible for tiny tumors)
+        if len(image.shape) == 2:
+            image_rgb = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        else:
+            image_rgb = image
+        
+        # Blend image with heatmap
+        heatmap_overlay = cv2.addWeighted(image_rgb, 0.6, heatmap_rgb, 0.4, 0)
         
         # Create segmented image (cropped)
         segmented = crop_to_bounding_box(image, mask, padding=10)
@@ -197,7 +235,9 @@ class UNetInference:
         return {
             'mask': mask,
             'overlay': overlay,
-            'segmented': segmented
+            'segmented': segmented,
+            'heatmap': heatmap_overlay,  # New: heatmap for better visibility
+            'probability_map': (prob_map * 255).astype(np.uint8)  # Raw probability map
         }
 
 

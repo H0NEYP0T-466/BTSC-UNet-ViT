@@ -128,7 +128,7 @@ class UNetDataset(Dataset):
     
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Get item by index.  Loads ONE slice from ONE . h5 file.
+        Get item by index.  Loads ONE slice from ONE .h5 file.
         
         Returns:
             Tuple of (image_tensor, mask_tensor)
@@ -158,20 +158,22 @@ class UNetDataset(Dataset):
         # Process image to [C, H, W] format
         if len(image.shape) == 2:
             # (H, W) -> (1, H, W)
-            image = image[np.newaxis, : , :]
+            image = image[np.newaxis, :, :]
         elif len(image.shape) == 3:
             if image.shape[0] not in [1, 2, 3, 4, 8]: 
                 # (H, W, C) -> (C, H, W)
                 image = np.transpose(image, (2, 0, 1))
             # else already (C, H, W)
         
-        # Process mask to [H, W] format
+        # ✅ FIX: Process mask to [H, W] format - USE MAX INSTEAD OF SUM
+        # This is critical for binary segmentation with multi-channel masks
         if len(mask.shape) == 3:
             if mask.shape[0] in [1, 2, 3, 4, 8]:  # (C, H, W)
-                # Sum across channels for multi-class or take first channel
-                mask = np.sum(mask, axis=0) if mask.shape[0] > 1 else mask[0]
+                # Use MAX across channels to preserve binary nature (not sum!)
+                mask = np.max(mask, axis=0) if mask.shape[0] > 1 else mask[0]
             else:  # (H, W, C)
-                mask = np.sum(mask, axis=2) if mask.shape[2] > 1 else mask[: , : , 0]
+                # Use MAX across channels to preserve binary nature (not sum!)
+                mask = np.max(mask, axis=2) if mask.shape[2] > 1 else mask[:, :, 0]
         
         # Resize each channel to target size
         num_channels = image.shape[0]
@@ -179,19 +181,32 @@ class UNetDataset(Dataset):
         for c in range(num_channels):
             resized_image[c] = cv2.resize(image[c], self.image_size, interpolation=cv2.INTER_LINEAR)
         
-        resized_mask = cv2.resize(mask, self. image_size, interpolation=cv2.INTER_NEAREST)
+        resized_mask = cv2.resize(mask, self.image_size, interpolation=cv2.INTER_NEAREST)
         
-        # Normalize image to [0, 1]
-        if resized_image.max() > 1.0:
-            resized_image = resized_image.astype(np. float32) / 255.0
-        else:
-            resized_image = resized_image. astype(np.float32)
+        # ✅ FIX: Proper normalization per channel
+        # Data is already preprocessed with mean ≈ 0, so we normalize by channel statistics
+        for c in range(num_channels):
+            channel_data = resized_image[c]
+            # Check if data is already normalized (values around [-1, 1] or [0, 1])
+            if channel_data.min() < 0 or channel_data.max() > 2:
+                # Data appears to be preprocessed with z-score normalization
+                # Clip to reasonable range and scale to [0, 1]
+                channel_min = channel_data.min()
+                channel_max = channel_data.max()
+                if channel_max > channel_min:
+                    resized_image[c] = (channel_data - channel_min) / (channel_max - channel_min)
+                else:
+                    resized_image[c] = np.zeros_like(channel_data)
+            elif channel_data.max() > 1.0:
+                # Data is in [0, 255] range
+                resized_image[c] = channel_data / 255.0
+            # else: data is already in [0, 1] range, keep as is
         
-        # Normalize mask to binary [0, 1]
-        if resized_mask.max() > 1.0:
-            resized_mask = (resized_mask > 0).astype(np.float32)
-        else:
-            resized_mask = (resized_mask > 0).astype(np.float32)
+        resized_image = resized_image.astype(np.float32)
+        
+        # ✅ FIX: Normalize mask to binary [0, 1]
+        # Any positive value indicates tumor
+        resized_mask = (resized_mask > 0).astype(np.float32)
         
         # Apply transforms if provided (note: transform must handle multi-channel input)
         if self.transform:
@@ -201,7 +216,7 @@ class UNetDataset(Dataset):
         
         # Convert to tensors
         image_tensor = torch.from_numpy(resized_image).float()  # (C, H, W)
-        mask_tensor = torch. from_numpy(resized_mask).unsqueeze(0).float()  # (1, H, W)
+        mask_tensor = torch.from_numpy(resized_mask).unsqueeze(0).float()  # (1, H, W)
         
         return image_tensor, mask_tensor
 

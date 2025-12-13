@@ -1,6 +1,6 @@
 """
 UNet training script for BraTS dataset.
-This is a scaffold that can be extended with actual BraTS data loading.
+Optimized for custom BraTS .h5 dataset with extreme class imbalance.
 """
 import time
 from pathlib import Path
@@ -11,6 +11,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from app.models.unet.model import get_unet_model
+from app.models.unet.utils import DiceBCELoss, visualize_batch
 from app.config import settings
 from app.utils.logger import get_logger
 from app.utils.metrics import dice_coefficient
@@ -26,7 +27,7 @@ def pixel_accuracy(preds, masks):
 
 
 class UNetTrainer:
-    """UNet trainer for brain tumor segmentation."""
+    """UNet trainer for brain tumor segmentation with extreme class imbalance handling."""
 
     def __init__(
         self,
@@ -35,29 +36,39 @@ class UNetTrainer:
         val_loader: DataLoader,
         device: str = 'cuda',
         learning_rate: float = 1e-4,
-        checkpoint_dir: Optional[Path] = None
+        checkpoint_dir: Optional[Path] = None,
+        visualize_every: int = 5  # Visualize every N epochs
     ):
         self.model = model.to(device)
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.device = device
         self.checkpoint_dir = checkpoint_dir or settings.CHECKPOINTS_UNET
+        self.visualize_every = visualize_every
 
-        self.optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-        self.criterion = nn.BCEWithLogitsLoss()
+        self.optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
+        
+        # ✅ FIX: Use combined Dice + BCE loss for extreme class imbalance
+        self.criterion = DiceBCELoss(dice_weight=0.5, bce_weight=0.5)
+        
+        # Learning rate scheduler for better convergence
+        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            self.optimizer, mode='max', factor=0.5, patience=5, verbose=True
+        )
 
         self.best_dice = 0.0
 
-        logger.info(f"UNet trainer initialized: lr={learning_rate}, device={device}", extra={
-            'image_id': None,
-            'path': str(self.checkpoint_dir),
-            'stage': 'train_init'
-        })
+        logger.info(
+            f"UNet trainer initialized: lr={learning_rate}, device={device}, "
+            f"loss=DiceBCE, scheduler=ReduceLROnPlateau",
+            extra={'image_id': None, 'path': str(self.checkpoint_dir), 'stage': 'train_init'}
+        )
 
     def train_epoch(self, epoch: int) -> tuple:
         """Train for one epoch."""
         self.model.train()
         total_loss = 0.0
+        total_dice = 0.0
         total_acc = 0.0
 
         pbar = tqdm(self.train_loader, desc=f"Epoch {epoch} [Train]")
@@ -72,19 +83,40 @@ class UNetTrainer:
 
             # Backward
             loss.backward()
+            
+            # Gradient clipping for stability
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+            
             self.optimizer.step()
 
-            # Calculate accuracy
-            preds = (torch.sigmoid(outputs) > 0.5).float()
-            acc = pixel_accuracy(preds, masks)
+            # Calculate metrics
+            with torch.no_grad():
+                preds = (torch.sigmoid(outputs) > 0.5).float()
+                acc = pixel_accuracy(preds, masks)
+                dice = dice_coefficient(preds.cpu().numpy(), masks.cpu().numpy())
 
             total_loss += loss.item()
+            total_dice += dice
             total_acc += acc
-            pbar.set_postfix({'loss': f"{loss.item():.4f}", 'acc': f"{acc:.4f}"})
+            
+            pbar.set_postfix({
+                'loss': f"{loss.item():.4f}",
+                'dice': f"{dice:.4f}",
+                'acc': f"{acc:.4f}"
+            })
+            
+            # Visualize first batch every N epochs
+            if batch_idx == 0 and epoch % self.visualize_every == 0:
+                save_path = self.checkpoint_dir / f'train_vis_epoch_{epoch}.png'
+                visualize_batch(
+                    images[:4], masks[:4], preds[:4],
+                    num_samples=4, save_path=str(save_path)
+                )
 
         avg_loss = total_loss / len(self.train_loader)
+        avg_dice = total_dice / len(self.train_loader)
         avg_acc = total_acc / len(self.train_loader)
-        return avg_loss, avg_acc
+        return avg_loss, avg_dice, avg_acc
 
     def validate_epoch(self, epoch: int) -> tuple:
         """Validate for one epoch."""
@@ -95,7 +127,7 @@ class UNetTrainer:
 
         with torch.no_grad():
             pbar = tqdm(self.val_loader, desc=f"Epoch {epoch} [Val]")
-            for images, masks in pbar:
+            for batch_idx, (images, masks) in enumerate(pbar):
                 images = images.to(self.device)
                 masks = masks.to(self.device)
 
@@ -103,14 +135,27 @@ class UNetTrainer:
                 loss = self.criterion(outputs, masks)
 
                 # Calculate Dice and Accuracy
-                preds = (torch.sigmoid(outputs) > 0.5)
+                preds = (torch.sigmoid(outputs) > 0.5).float()
                 dice = dice_coefficient(preds.cpu().numpy(), masks.cpu().numpy())
-                acc = pixel_accuracy(preds.float(), masks)
+                acc = pixel_accuracy(preds, masks)
 
                 total_loss += loss.item()
                 total_dice += dice
                 total_acc += acc
-                pbar.set_postfix({'loss': f"{loss.item():.4f}", 'dice': f"{dice:.4f}", 'acc': f"{acc:.4f}"})
+                
+                pbar.set_postfix({
+                    'loss': f"{loss.item():.4f}",
+                    'dice': f"{dice:.4f}",
+                    'acc': f"{acc:.4f}"
+                })
+                
+                # Visualize first batch every N epochs
+                if batch_idx == 0 and epoch % self.visualize_every == 0:
+                    save_path = self.checkpoint_dir / f'val_vis_epoch_{epoch}.png'
+                    visualize_batch(
+                        images[:4], masks[:4], preds[:4],
+                        num_samples=4, save_path=str(save_path)
+                    )
 
         avg_loss = total_loss / len(self.val_loader)
         avg_dice = total_dice / len(self.val_loader)
@@ -124,6 +169,7 @@ class UNetTrainer:
             'epoch': epoch,
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
+            'scheduler_state_dict': self.scheduler.state_dict(),
             'best_dice': self.best_dice
         }
 
@@ -140,7 +186,7 @@ class UNetTrainer:
         if is_best:
             best_path = self.checkpoint_dir / settings.UNET_CHECKPOINT_NAME
             torch.save(checkpoint, best_path)
-            logger.info(f"Best checkpoint saved: {best_path}", extra={
+            logger.info(f"Best checkpoint saved: {best_path} (Dice: {self.best_dice:.4f})", extra={
                 'image_id': None,
                 'path': str(best_path),
                 'stage': 'checkpoint_save'
@@ -148,41 +194,39 @@ class UNetTrainer:
 
     def train(self, num_epochs: int):
         """Train for multiple epochs."""
-        logger.info(f"Starting UNet training for {num_epochs} epochs", extra={
-            'image_id': None,
-            'path': None,
-            'stage': 'train_start'
-        })
+        logger.info(
+            f"Starting UNet training for {num_epochs} epochs with DiceBCE loss",
+            extra={'image_id': None, 'path': None, 'stage': 'train_start'}
+        )
 
         for epoch in range(1, num_epochs + 1):
             epoch_start = time.time()
 
             # Train
-            train_loss, train_acc = self.train_epoch(epoch)
+            train_loss, train_dice, train_acc = self.train_epoch(epoch)
 
             # Validate
             val_loss, val_dice, val_acc = self.validate_epoch(epoch)
 
             epoch_duration = time.time() - epoch_start
 
+            # Update learning rate based on validation Dice
+            self.scheduler.step(val_dice)
+
             # Log epoch metrics
             logger.info(
                 f"Epoch {epoch}/{num_epochs} completed: "
-                f"train_loss={train_loss:.4f}, train_acc={train_acc:.4f}, "
+                f"train_loss={train_loss:.4f}, train_dice={train_dice:.4f}, train_acc={train_acc:.4f}, "
                 f"val_loss={val_loss:.4f}, val_dice={val_dice:.4f}, val_acc={val_acc:.4f}, "
                 f"lr={self.optimizer.param_groups[0]['lr']:.6f}, duration={epoch_duration:.2f}s",
-                extra={
-                    'image_id': None,
-                    'path': None,
-                    'stage': 'train_epoch'
-                }
+                extra={'image_id': None, 'path': None, 'stage': 'train_epoch'}
             )
 
             # Save checkpoint
             is_best = val_dice > self.best_dice
             if is_best:
                 self.best_dice = val_dice
-                logger.info(f"New best Dice score: {self.best_dice:.4f}", extra={
+                logger.info(f"🎉 New best Dice score: {self.best_dice:.4f}", extra={
                     'image_id': None,
                     'path': None,
                     'stage': 'train_epoch'
@@ -269,7 +313,8 @@ def main():
         val_loader=val_loader,
         device=device,
         learning_rate=settings.LEARNING_RATE,
-        checkpoint_dir=settings.CHECKPOINTS_UNET
+        checkpoint_dir=settings.CHECKPOINTS_UNET,
+        visualize_every=5
     )
 
     trainer.train(settings.NUM_EPOCHS)
