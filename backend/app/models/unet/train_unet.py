@@ -191,6 +191,39 @@ class UNetTrainer:
                 'path': str(best_path),
                 'stage': 'checkpoint_save'
             })
+    
+    def load_checkpoint(self, checkpoint_path: Path):
+        """
+        Load checkpoint with graceful handling of missing scheduler state.
+        
+        Args:
+            checkpoint_path: Path to checkpoint file
+        """
+        checkpoint = torch.load(checkpoint_path, map_location=self.device)
+        
+        # Load model state
+        if 'model_state_dict' in checkpoint:
+            self.model.load_state_dict(checkpoint['model_state_dict'])
+        else:
+            self.model.load_state_dict(checkpoint)
+        
+        # Load optimizer state if available
+        if 'optimizer_state_dict' in checkpoint:
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        
+        # Load scheduler state if available (for backward compatibility)
+        if 'scheduler_state_dict' in checkpoint:
+            self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        
+        # Load best dice if available
+        if 'best_dice' in checkpoint:
+            self.best_dice = checkpoint['best_dice']
+        
+        logger.info(f"Checkpoint loaded from {checkpoint_path}", extra={
+            'image_id': None,
+            'path': str(checkpoint_path),
+            'stage': 'checkpoint_load'
+        })
 
     def train(self, num_epochs: int):
         """Train for multiple epochs."""

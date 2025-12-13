@@ -57,8 +57,12 @@ import sys
 import argparse
 from pathlib import Path
 
-# Add backend to path
-backend_path = Path(__file__).parent / "backend"
+# Add backend to path - handle both root and subdirectory execution
+script_dir = Path(__file__).parent
+backend_path = script_dir / "backend"
+if not backend_path.exists():
+    # If backend not found relative to script, try absolute path
+    backend_path = Path(__file__).resolve().parent / "backend"
 sys.path.insert(0, str(backend_path))
 
 import torch

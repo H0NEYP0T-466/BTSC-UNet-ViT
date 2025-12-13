@@ -10,8 +10,8 @@ import torch
 import matplotlib.pyplot as plt
 import h5py
 
-# Add backend to path
-backend_path = Path(__file__).parent.parent / "backend"
+# Add backend to path - test file is in backend/tests/
+backend_path = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_path))
 
 from app.models.unet.model import get_unet_model

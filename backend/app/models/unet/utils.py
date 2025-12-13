@@ -17,9 +17,17 @@ class DiceBCELoss(nn.Module):
     Combined Dice + BCE loss for handling extreme class imbalance in binary segmentation.
     
     This is crucial for datasets where tumor pixels are < 1% (e.g., 0.17% in our case).
-    - Dice loss focuses on overlap and handles imbalance naturally
-    - BCE loss provides stable gradients
-    - Combined: Best of both worlds
+    
+    Why this combination works for extreme imbalance:
+    - Dice loss: Focuses on overlap between prediction and ground truth, naturally handles
+      class imbalance by considering intersection/union rather than pixel-by-pixel comparison.
+      However, Dice can have unstable gradients when predictions are far from ground truth.
+    - BCE loss: Provides stable gradients across all training stages and helps with
+      pixel-level accuracy. However, BCE alone suffers from class imbalance issues.
+    - Combined: Dice handles imbalance and focuses on overlap, while BCE provides stable
+      gradients. This combination outperforms weighted BCE or focal loss for extreme
+      imbalance in medical imaging (see Sudre et al. 2017, "Generalised Dice overlap as
+      a deep learning loss function for highly unbalanced segmentations").
     """
     
     def __init__(self, dice_weight: float = 0.5, bce_weight: float = 0.5, smooth: float = 1e-6):

@@ -7,6 +7,8 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 import torch
 import cv2
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 from app.models.unet.model import get_unet_model
 from app.config import settings
 from app.utils.logger import get_logger
@@ -195,9 +197,6 @@ class UNetInference:
         # ✅ FIX: Create enhanced visualizations for tiny tumors
         
         # Create heatmap with 'hot' colormap for better visibility
-        import matplotlib.pyplot as plt
-        import matplotlib.cm as cm
-        
         # Convert probability map to color using 'hot' colormap
         # This makes even 0.17% tumor regions visible
         colormap = cm.get_cmap('hot')

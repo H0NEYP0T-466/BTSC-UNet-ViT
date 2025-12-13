@@ -16,6 +16,11 @@ from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Threshold to detect if data is already normalized (preprocessed with z-score)
+# If max value > 2.0, data appears to be in original scale or preprocessed with mean≈0
+# This is based on observing BraTS preprocessed data where values typically range [-0.6, 5.2]
+NORMALIZED_DATA_MAX_THRESHOLD = 2.0
+
 
 class UNetDataset(Dataset):
     """
@@ -188,7 +193,7 @@ class UNetDataset(Dataset):
         for c in range(num_channels):
             channel_data = resized_image[c]
             # Check if data is already normalized (values around [-1, 1] or [0, 1])
-            if channel_data.min() < 0 or channel_data.max() > 2:
+            if channel_data.min() < 0 or channel_data.max() > NORMALIZED_DATA_MAX_THRESHOLD:
                 # Data appears to be preprocessed with z-score normalization
                 # Clip to reasonable range and scale to [0, 1]
                 channel_min = channel_data.min()
