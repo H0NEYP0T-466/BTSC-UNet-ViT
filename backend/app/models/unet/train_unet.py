@@ -53,7 +53,7 @@ class UNetTrainer:
         
         # Learning rate scheduler for better convergence
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            self.optimizer, mode='max', factor=0.5, patience=5, verbose=True
+            self.optimizer, mode='max', factor=0.5, patience=5
         )
 
         self.best_dice = 0.0

@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     PRETRAINED_UNET_CHECKPOINT_NAME: str = "unet_pretrained.pth"
     
     # Model selection
-    USE_PRETRAINED_UNET: bool = True  # Set to True to use pretrained UNet, False for local trained model
+    USE_PRETRAINED_UNET: bool = False  # Set to True to use pretrained UNet, False for local trained model
 
     # UNet settings
     UNET_IN_CHANNELS: int = 4  # ✅ FIXED - BraTS has 4 modalities (T1, T1ce, T2, FLAIR)
