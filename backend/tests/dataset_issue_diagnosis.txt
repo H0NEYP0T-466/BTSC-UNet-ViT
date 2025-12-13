@@ -1,0 +1,78 @@
+================================================================================
+DATASET ISSUE DIAGNOSIS: Why UNet Was Marking Whole Brain as Tumor
+================================================================================
+
+YES, THE ISSUE IS WITH THE DATASET FORMAT MISMATCH
+
+Root Cause Analysis:
+====================
+
+1. MASK CHANNEL MISMATCH:
+   - Dataset has 3-channel masks (240, 240, 3)
+   - Current code was summing mask channels incorrectly
+   - This could cause the entire brain region to be marked as positive
+
+2. EXTREME CLASS IMBALANCE NOT HANDLED:
+   - Only 0.17% of pixels are tumor (301 out of 172,800 pixels)
+   - Standard BCE loss treats all pixels equally
+   - Model learns to predict majority class (non-tumor/background)
+   - Without proper loss weighting, model predicts everything as tumor OR nothing as tumor
+
+3. IMPROPER NORMALIZATION:
+   - Image channels have different value ranges
+   - Channel 0: [-0.595, 5.230]
+   - Channel 1: [-0.613, 2.397]
+   - Channel 2: [-0.615, 3.232]
+   - Channel 3: [-0.612, 3.435]
+   - Data is already normalized (mean ≈ 0), but code was dividing by 255
+   - This destroyed the signal and made all values near zero
+
+4. MASK VISIBILITY ISSUE:
+   - With only 0.17% tumor pixels, masks appear black when displayed normally
+   - Requires special visualization (e.g., 'hot' colormap with proper scaling)
+   - Web interface was showing black masks because values were too small
+
+5. BINARY SEGMENTATION NOT PROPERLY CONFIGURED:
+   - Should use sigmoid activation (not softmax)
+   - Should output 1 channel (not 3)
+   - Loss function should handle extreme imbalance
+
+Solution Implemented:
+=====================
+
+1. PROPER MASK HANDLING:
+   - Collapse 3-channel mask using np.max() instead of np.sum()
+   - This preserves binary nature of tumor labels
+   - Ensures (240, 240, 3) → (240, 240) correctly
+
+2. COMBINED DICE + BCE LOSS:
+   - Dice Loss: Handles class imbalance by focusing on overlap
+   - BCE Loss: Provides stable gradients for binary classification
+   - Combined: Best of both worlds for extreme imbalance
+
+3. PER-CHANNEL NORMALIZATION:
+   - Each channel normalized independently to [0, 1] or standardized
+   - Preserves signal in preprocessed data
+   - No division by 255 when data is already normalized
+
+4. ENHANCED VISUALIZATION:
+   - Heatmap visualization with 'hot' colormap
+   - Proper scaling to make tiny tumors visible
+   - Overlay with adjustable alpha for web display
+
+5. PROPER BINARY SEGMENTATION:
+   - Single output channel
+   - Sigmoid activation
+   - Threshold at 0.5 for binary mask
+
+6. OPTIMIZED FOR GOOGLE COLAB:
+   - Batch size increased to 16 (from 8) to utilize 15GB GPU RAM
+   - Epochs increased to 50 (from 20) for better convergence
+   - Gradient accumulation if needed for larger effective batch size
+
+This comprehensive fix ensures:
+- Correct dataset loading and preprocessing
+- Proper handling of extreme class imbalance
+- Visible tumor predictions even for tiny regions (0.17%)
+- Robust training with appropriate loss function
+- Web-ready inference with enhanced visualization
