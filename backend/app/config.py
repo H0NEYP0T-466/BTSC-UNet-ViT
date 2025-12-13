@@ -48,8 +48,13 @@ class Settings(BaseSettings):
     # Model checkpoint directories
     CHECKPOINTS_UNET: Path = CHECKPOINTS_DIR / "unet"
     CHECKPOINTS_VIT: Path = CHECKPOINTS_DIR / "vit"
+    CHECKPOINTS_PRETRAINED_UNET: Path = CHECKPOINTS_DIR / "pretrained_unet"
     UNET_CHECKPOINT_NAME: str = "unet_best.pth"
     VIT_CHECKPOINT_NAME: str = "vit_best.pth"
+    PRETRAINED_UNET_CHECKPOINT_NAME: str = "unet_pretrained.pth"
+    
+    # Model selection
+    USE_PRETRAINED_UNET: bool = True  # Set to True to use pretrained UNet, False for local trained model
 
     # UNet settings
     UNET_IN_CHANNELS: int = 4  # ✅ FIXED - BraTS has 4 modalities (T1, T1ce, T2, FLAIR)
@@ -77,6 +82,11 @@ class Settings(BaseSettings):
     NLM_H: int = 10
     UNSHARP_RADIUS: float = 1.0
     UNSHARP_AMOUNT: float = 1.0
+    MOTION_PRESERVE_DETAIL: bool = True  # Use edge-preserving bilateral filter
+    
+    # Segmentation post-processing parameters
+    SEGMENTATION_MIN_AREA: int = 100  # Minimum area for connected components (pixels)
+    SEGMENTATION_THRESHOLD: float = 0.5  # Threshold for binary segmentation
 
     class Config:
         env_file = ".env"
@@ -90,5 +100,6 @@ settings = Settings()
 settings.RESOURCES_DIR. mkdir(parents=True, exist_ok=True)
 settings.CHECKPOINTS_UNET.mkdir(parents=True, exist_ok=True)
 settings.CHECKPOINTS_VIT.mkdir(parents=True, exist_ok=True)
+settings.CHECKPOINTS_PRETRAINED_UNET.mkdir(parents=True, exist_ok=True)
 settings.UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 settings.ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)

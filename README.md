@@ -5,8 +5,8 @@ Brain Tumor Segmentation and Classification using UNet and Vision Transformer (V
 ## Overview
 
 Full-stack application for automated brain tumor analysis in MRI images:
-- **Preprocessing**: Denoising, contrast enhancement, normalization
-- **Segmentation**: UNet-based tumor detection
+- **Preprocessing**: Edge-preserving denoising, contrast enhancement, normalization
+- **Segmentation**: Pretrained UNet-based tumor-only detection
 - **Classification**: ViT-based tumor type classification
 
 ### Tumor Classes
@@ -15,16 +15,26 @@ Full-stack application for automated brain tumor analysis in MRI images:
 - Meningioma
 - Pituitary Tumor
 
+## ✨ New Features
+
+### Pretrained UNet Model (Recommended)
+- **No training required** - Ready to use immediately
+- **Tumor-only segmentation** - Precisely segments tumor regions, not the whole brain
+- **MONAI-based architecture** - Medical imaging optimized
+- **Improved preprocessing** - Edge-preserving bilateral filtering
+
+See [PRETRAINED_UNET_SETUP.md](PRETRAINED_UNET_SETUP.md) for detailed setup instructions.
+
 ## Architecture
 
 ```
-Frontend (React + TypeScript) → Backend (FastAPI + Python) → Models (UNet + ViT)
+Frontend (React + TypeScript) → Backend (FastAPI + Python) → Models (Pretrained UNet + ViT)
 ```
 
 ### Pipeline
 1. User uploads brain MRI image
-2. Image preprocessing (denoising, normalization, etc.)
-3. UNet segments tumor region
+2. Image preprocessing (edge-preserving denoising, contrast enhancement, normalization)
+3. Pretrained UNet segments tumor region only
 4. ViT classifies tumor type
 5. Results displayed with confidence scores
 
@@ -37,6 +47,9 @@ cd backend
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+
+# Download pretrained model (one-time setup)
+python -m app.models.pretrained_unet.download_model
 
 # Run server
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -64,15 +77,18 @@ App: http://localhost:5173
 ### Backend
 - **Verbose Logging**: Structured logging at every stage
 - **RESTful API**: FastAPI with automatic OpenAPI docs
-- **Preprocessing Pipeline**: 6-stage image enhancement
-- **UNet Segmentation**: Medical-grade tumor detection
+- **Improved Preprocessing Pipeline**: Edge-preserving 6-stage image enhancement
+- **Pretrained UNet Segmentation**: MONAI-based tumor-only detection (default)
+- **Local UNet Training**: Optional local training on BraTS dataset
 - **ViT Classification**: Pretrained transformer fine-tuned on medical images
 - **Batch Processing**: Dataset preprocessing service
+- **Model Selection**: Easy toggle between pretrained and local models
 
 ### Frontend
 - **Dark Theme**: Modern UI with #111 background and #00C2FF accent
 - **Drag & Drop**: Easy file upload
 - **Real-time Visualization**: View all processing stages
+- **Final Image Indicator**: Highlights the preprocessed image passed to models
 - **Responsive Design**: Works on all devices
 - **No Tailwind**: Clean, component-based CSS
 
@@ -85,7 +101,10 @@ App: http://localhost:5173
 │   │   ├── config.py            # Configuration
 │   │   ├── logging_config.py    # Logging setup
 │   │   ├── routers/             # API endpoints
-│   │   ├── models/              # UNet & ViT
+│   │   ├── models/              # UNet & ViT models
+│   │   │   ├── unet/            # Local trained UNet
+│   │   │   ├── pretrained_unet/ # Pretrained MONAI UNet (NEW)
+│   │   │   └── vit/             # Vision Transformer
 │   │   ├── services/            # Business logic
 │   │   ├── utils/               # Preprocessing, imaging
 │   │   └── schemas/             # Pydantic models
@@ -97,12 +116,14 @@ App: http://localhost:5173
 │   ├── pages/                   # Page layouts
 │   ├── services/                # API client
 │   └── theme/                   # CSS variables & styles
+├── PRETRAINED_UNET_SETUP.md     # Pretrained model guide (NEW)
 ├── package.json
 └── README.md
 ```
 
 ## Documentation
 
+- [Pretrained UNet Setup](PRETRAINED_UNET_SETUP.md) - **START HERE** for quick setup
 - [Backend README](backend/README.md) - API, training, deployment
 - [Frontend README](frontend_README.md) - Components, styling, development
 
@@ -126,15 +147,26 @@ POST /api/segment       # Segmentation only
 POST /api/classify      # Classification only
 ```
 
-## Training
+## Model Setup & Training
 
-### UNet (on BraTS dataset)
+### Option 1: Use Pretrained UNet (Recommended - No Training Required)
+
 ```bash
 cd backend
+python -m app.models.pretrained_unet.download_model
+```
+
+This creates a ready-to-use MONAI UNet model optimized for brain tumor segmentation.
+
+### Option 2: Train Local UNet (on BraTS dataset)
+
+```bash
+cd backend
+# Set USE_PRETRAINED_UNET=False in config.py first
 python -m app.models.unet.train_unet
 ```
 
-### ViT (on segmented dataset)
+### ViT Training (on segmented dataset)
 ```bash
 # First, segment the dataset
 python -c "from app.services.dataset_service import get_dataset_service; get_dataset_service().preprocess_and_segment_dataset()"
@@ -150,6 +182,15 @@ python -m app.models.vit.train_vit
 DATASET_ROOT=X:/file/FAST_API/BTSC-UNet-ViT/dataset
 BRATS_ROOT=X:/data/BraTS
 LOG_LEVEL=INFO
+```
+
+### Model Selection (backend/app/config.py)
+```python
+# Use pretrained UNet (default, recommended)
+USE_PRETRAINED_UNET: bool = True
+
+# Or use local trained model
+USE_PRETRAINED_UNET: bool = False
 ```
 
 ### Frontend (.env)
