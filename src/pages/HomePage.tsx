@@ -68,6 +68,8 @@ export function HomePage() {
                   <PreprocessedGallery
                     images={{
                       grayscale: apiClient.getResourceUrl(result.preprocessing.grayscale),
+                      skull_stripped: apiClient.getResourceUrl(result.preprocessing.skull_stripped),
+                      brain_mask: apiClient.getResourceUrl(result.preprocessing.brain_mask),
                       denoised: apiClient.getResourceUrl(result.preprocessing.denoised),
                       motion_reduced: apiClient.getResourceUrl(result.preprocessing.motion_reduced),
                       contrast: apiClient.getResourceUrl(result.preprocessing.contrast),
