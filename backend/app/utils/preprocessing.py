@@ -144,6 +144,7 @@ def enhance_contrast_clahe(
     image: np.ndarray,
     clip_limit: float = 2.0,
     tile_grid_size: Tuple[int, int] = (8, 8),
+    mask: Optional[np.ndarray] = None,
     image_id: Optional[str] = None
 ) -> np.ndarray:
     """
@@ -153,6 +154,7 @@ def enhance_contrast_clahe(
         image: Input grayscale image
         clip_limit: Threshold for contrast limiting
         tile_grid_size: Size of grid for histogram equalization
+        mask: Optional binary mask to apply CLAHE only inside mask (0 = background, 255 = foreground)
         image_id: Image identifier for logging
         
     Returns:
@@ -166,7 +168,30 @@ def enhance_contrast_clahe(
     })
     
     clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
-    enhanced = clahe.apply(image)
+    
+    if mask is not None:
+        # Apply CLAHE only inside the mask to avoid background noise
+        logger.info("Applying CLAHE inside brain mask only", extra={
+            'image_id': image_id,
+            'path': None,
+            'stage': 'contrast_enhancement'
+        })
+        
+        # Create a copy to preserve original
+        enhanced = image.copy()
+        
+        # Apply CLAHE only to masked region
+        masked_region = image.copy()
+        masked_region[mask == 0] = 0  # Zero out background
+        
+        # Apply CLAHE
+        enhanced_masked = clahe.apply(masked_region)
+        
+        # Copy enhanced values only where mask is present
+        enhanced[mask > 0] = enhanced_masked[mask > 0]
+    else:
+        # Apply CLAHE to entire image
+        enhanced = clahe.apply(image)
     
     duration = time.time() - start_time
     logger.info(f"Contrast enhancement completed successfully in {duration:.3f}s", extra={
@@ -333,18 +358,29 @@ def normalize_image(
 def preprocess_pipeline(
     image: np.ndarray,
     config: Optional[Dict] = None,
-    image_id: Optional[str] = None
+    image_id: Optional[str] = None,
+    apply_skull_stripping: bool = True
 ) -> Dict[str, np.ndarray]:
     """
-    Run full preprocessing pipeline on an image.
+    Run full preprocessing pipeline on an image with skull stripping and noise-free contrast enhancement.
+    
+    Pipeline order (optimized for medical imaging):
+    1. Convert to grayscale
+    2. Skull stripping (HD-BET) - removes non-brain tissue
+    3. Denoising (before contrast enhancement to avoid amplifying noise)
+    4. Motion artifact reduction
+    5. Contrast enhancement (CLAHE applied only inside brain mask)
+    6. Sharpening
+    7. Normalization (after all enhancements)
     
     Args:
         image: Input image (RGB or grayscale)
         config: Optional configuration dict with preprocessing parameters
         image_id: Image identifier for logging
+        apply_skull_stripping: Whether to apply skull stripping (default: True)
         
     Returns:
-        Dictionary with intermediate preprocessing outputs
+        Dictionary with intermediate preprocessing outputs including 'skull_stripped' and 'brain_mask'
     """
     start_time = time.time()
     logger.info("Preprocessing pipeline started", extra={
@@ -358,29 +394,56 @@ def preprocess_pipeline(
     # Step 1: Convert to grayscale
     grayscale = to_grayscale(image, image_id=image_id)
     
-    # Step 2: Denoise (salt & pepper)
-    denoised = remove_salt_pepper(
-        grayscale,
-        kernel_size=config.get('median_kernel_size', 3),
-        image_id=image_id
-    )
+    # Step 2: Skull stripping (optional)
+    if apply_skull_stripping:
+        try:
+            from app.utils.skull_stripping import skull_strip_hdbet
+            skull_stripped, brain_mask = skull_strip_hdbet(grayscale, image_id=image_id)
+        except Exception as e:
+            logger.warning(f"Skull stripping failed, continuing without it: {e}", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'preprocess'
+            })
+            skull_stripped = grayscale.copy()
+            brain_mask = np.ones_like(grayscale, dtype=np.uint8) * 255
+    else:
+        skull_stripped = grayscale.copy()
+        brain_mask = np.ones_like(grayscale, dtype=np.uint8) * 255
     
-    # Step 3: Reduce motion artifacts
+    # Step 3: Denoise (BEFORE contrast enhancement to avoid noise amplification)
+    # Use Non-Local Means for better denoising on brain tissue
+    if config.get('use_nlm_denoising', True):
+        denoised = denoise_nlm(
+            skull_stripped,
+            h=config.get('nlm_h', 10),
+            image_id=image_id
+        )
+    else:
+        # Fallback to median filter
+        denoised = remove_salt_pepper(
+            skull_stripped,
+            kernel_size=config.get('median_kernel_size', 3),
+            image_id=image_id
+        )
+    
+    # Step 4: Reduce motion artifacts
     motion_reduced = reduce_motion_artifact(
         denoised, 
         image_id=image_id,
         preserve_detail=config.get('preserve_detail', True)
     )
     
-    # Step 4: Enhance contrast
+    # Step 5: Enhance contrast (CLAHE applied only inside brain mask)
     contrast = enhance_contrast_clahe(
         motion_reduced,
         clip_limit=config.get('clahe_clip_limit', 2.0),
         tile_grid_size=config.get('clahe_tile_grid_size', (8, 8)),
+        mask=brain_mask,  # Apply CLAHE only inside brain
         image_id=image_id
     )
     
-    # Step 5: Sharpen
+    # Step 6: Sharpen
     sharpened = unsharp_mask(
         contrast,
         radius=config.get('unsharp_radius', 1.0),
@@ -388,7 +451,7 @@ def preprocess_pipeline(
         image_id=image_id
     )
     
-    # Step 6: Normalize
+    # Step 7: Normalize (AFTER all enhancements)
     normalized = normalize_image(
         sharpened,
         method=config.get('normalize_method', 'zscore'),
@@ -404,6 +467,8 @@ def preprocess_pipeline(
     
     return {
         'grayscale': grayscale,
+        'skull_stripped': skull_stripped,
+        'brain_mask': brain_mask,
         'denoised': denoised,
         'motion_reduced': motion_reduced,
         'contrast': contrast,

@@ -18,14 +18,16 @@ router = APIRouter(prefix="/preprocess", tags=["preprocessing"])
 @router.post("", response_model=PreprocessResponse)
 async def preprocess_image(file: UploadFile = File(...)):
     """
-    Preprocess uploaded image.
+    Preprocess uploaded image with skull stripping and noise-free contrast enhancement.
     
+    Pipeline:
     - Converts to grayscale
-    - Denoises (salt & pepper removal)
+    - Skull stripping (HD-BET) - removes non-brain tissue
+    - Denoises (before contrast enhancement)
     - Reduces motion artifacts
-    - Enhances contrast (CLAHE)
+    - Enhances contrast (CLAHE applied only inside brain mask)
     - Sharpens edges
-    - Normalizes intensity
+    - Normalizes intensity (after all enhancements)
     """
     start_time = time.time()
     
@@ -53,17 +55,24 @@ async def preprocess_image(file: UploadFile = File(...)):
         # Save original
         original_url = storage.save_upload(image, image_id)
         
-        # Preprocess
+        # Preprocess with skull stripping
         config = {
             'median_kernel_size': settings.MEDIAN_KERNEL_SIZE,
             'clahe_clip_limit': settings.CLAHE_CLIP_LIMIT,
             'clahe_tile_grid_size': settings.CLAHE_TILE_GRID_SIZE,
             'unsharp_radius': settings.UNSHARP_RADIUS,
             'unsharp_amount': settings.UNSHARP_AMOUNT,
-            'normalize_method': 'zscore'
+            'normalize_method': 'zscore',
+            'use_nlm_denoising': True,  # Use Non-Local Means for better denoising
+            'nlm_h': settings.NLM_H
         }
         
-        preprocessed = preprocess_pipeline(image, config=config, image_id=image_id)
+        preprocessed = preprocess_pipeline(
+            image, 
+            config=config, 
+            image_id=image_id,
+            apply_skull_stripping=True
+        )
         
         # Save all stages
         urls = {}
@@ -83,6 +92,8 @@ async def preprocess_image(file: UploadFile = File(...)):
             image_id=image_id,
             original_url=storage.get_artifact_url(original_url),
             grayscale_url=urls['grayscale'],
+            skull_stripped_url=urls['skull_stripped'],
+            brain_mask_url=urls['brain_mask'],
             denoised_url=urls['denoised'],
             motion_reduced_url=urls['motion_reduced'],
             contrast_url=urls['contrast'],
