@@ -18,16 +18,15 @@ router = APIRouter(prefix="/preprocess", tags=["preprocessing"])
 @router.post("", response_model=PreprocessResponse)
 async def preprocess_image(file: UploadFile = File(...)):
     """
-    Preprocess uploaded image with skull stripping and noise-free contrast enhancement.
+    Preprocess uploaded image with quality-focused enhancement.
     
     Pipeline:
     - Converts to grayscale
-    - Skull stripping (HD-BET) - removes non-brain tissue
-    - Denoises (before contrast enhancement)
-    - Reduces motion artifacts
-    - Enhances contrast (CLAHE applied only inside brain mask)
-    - Sharpens edges
-    - Normalizes intensity (after all enhancements)
+    - Denoises (preserves edges)
+    - Reduces motion artifacts (minimal blur)
+    - Enhances contrast (CLAHE)
+    - Sharpens edges (recovers detail)
+    - Normalizes intensity (standardizes range)
     """
     start_time = time.time()
     
@@ -55,7 +54,7 @@ async def preprocess_image(file: UploadFile = File(...)):
         # Save original
         original_url = storage.save_upload(image, image_id)
         
-        # Preprocess with skull stripping
+        # Preprocess without skull stripping
         config = {
             'median_kernel_size': settings.MEDIAN_KERNEL_SIZE,
             'clahe_clip_limit': settings.CLAHE_CLIP_LIMIT,
@@ -64,14 +63,15 @@ async def preprocess_image(file: UploadFile = File(...)):
             'unsharp_amount': settings.UNSHARP_AMOUNT,
             'normalize_method': 'zscore',
             'use_nlm_denoising': True,  # Use Non-Local Means for better denoising
-            'nlm_h': settings.NLM_H
+            'nlm_h': settings.NLM_H,
+            'preserve_detail': True  # Ensure detail preservation
         }
         
         preprocessed = preprocess_pipeline(
             image, 
             config=config, 
             image_id=image_id,
-            apply_skull_stripping=True
+            apply_skull_stripping=False  # Disabled
         )
         
         # Save all stages
@@ -92,8 +92,6 @@ async def preprocess_image(file: UploadFile = File(...)):
             image_id=image_id,
             original_url=storage.get_artifact_url(original_url),
             grayscale_url=urls['grayscale'],
-            skull_stripped_url=urls['skull_stripped'],
-            brain_mask_url=urls['brain_mask'],
             denoised_url=urls['denoised'],
             motion_reduced_url=urls['motion_reduced'],
             contrast_url=urls['contrast'],

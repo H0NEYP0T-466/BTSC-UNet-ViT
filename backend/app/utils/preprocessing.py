@@ -249,39 +249,39 @@ def reduce_motion_artifact(
     preserve_detail: bool = True
 ) -> np.ndarray:
     """
-    Reduce motion artifacts with improved edge preservation.
+    Reduce motion artifacts while preserving image detail and quality.
+    Uses very light edge-preserving bilateral filtering to maintain sharpness.
     
     Args:
         image: Input grayscale image
         image_id: Image identifier for logging
-        preserve_detail: If True, uses edge-preserving bilateral filter (recommended)
+        preserve_detail: If True, uses minimal edge-preserving bilateral filter (recommended)
         
     Returns:
-        Motion-corrected image
+        Motion-corrected image with preserved detail
     """
     start_time = time.time()
-    logger.info("Reducing motion artifacts with edge preservation", extra={
+    logger.info("Reducing motion artifacts while preserving detail", extra={
         'image_id': image_id,
         'path': None,
         'stage': 'motion_reduction'
     })
     
     if preserve_detail:
-        # Use bilateral filter only (edge-preserving smoothing)
-        # This reduces noise while preserving edges, crucial for tumor detection
-        # Parameters: d=5 (smaller neighborhood), sigmaColor=50, sigmaSpace=50
-        deblurred = cv2.bilateralFilter(image, 5, 50, 50)
-        logger.info("Applied edge-preserving bilateral filter", extra={
+        # Use very light bilateral filter to preserve detail
+        # Parameters optimized to MINIMIZE blur while reducing motion artifacts:
+        # d=3 (very small neighborhood), sigmaColor=30, sigmaSpace=30
+        # This keeps edges sharp and preserves fine details
+        deblurred = cv2.bilateralFilter(image, 3, 30, 30)
+        logger.info("Applied minimal edge-preserving bilateral filter", extra={
             'image_id': image_id,
             'path': None,
             'stage': 'motion_reduction'
         })
     else:
-        # Original approach (more aggressive blur)
-        kernel = np.ones((5, 5), np.float32) / 25
-        deblurred = cv2.filter2D(image, -1, kernel)
-        deblurred = cv2.bilateralFilter(deblurred, 9, 75, 75)
-        logger.info("Applied standard motion reduction", extra={
+        # Skip motion reduction entirely to preserve maximum detail
+        deblurred = image.copy()
+        logger.info("Skipped motion reduction to preserve detail", extra={
             'image_id': image_id,
             'path': None,
             'stage': 'motion_reduction'
@@ -359,28 +359,27 @@ def preprocess_pipeline(
     image: np.ndarray,
     config: Optional[Dict] = None,
     image_id: Optional[str] = None,
-    apply_skull_stripping: bool = True
+    apply_skull_stripping: bool = False
 ) -> Dict[str, np.ndarray]:
     """
-    Run full preprocessing pipeline on an image with skull stripping and noise-free contrast enhancement.
+    Run simplified preprocessing pipeline focused on quality enhancement.
     
-    Pipeline order (optimized for medical imaging):
+    Pipeline order (optimized for preserving image quality):
     1. Convert to grayscale
-    2. Skull stripping (HD-BET) - removes non-brain tissue
-    3. Denoising (before contrast enhancement to avoid amplifying noise)
-    4. Motion artifact reduction
-    5. Contrast enhancement (CLAHE applied only inside brain mask)
-    6. Sharpening
-    7. Normalization (after all enhancements)
+    2. Denoising (removes noise while preserving edges)
+    3. Light motion artifact reduction (minimal blur)
+    4. Contrast enhancement (CLAHE for better visibility)
+    5. Sharpening (recovers fine details)
+    6. Normalization (standardizes intensity range)
     
     Args:
         image: Input image (RGB or grayscale)
         config: Optional configuration dict with preprocessing parameters
         image_id: Image identifier for logging
-        apply_skull_stripping: Whether to apply skull stripping (default: True)
+        apply_skull_stripping: Deprecated, kept for compatibility but not used
         
     Returns:
-        Dictionary with intermediate preprocessing outputs including 'skull_stripped' and 'brain_mask'
+        Dictionary with intermediate preprocessing outputs
     """
     start_time = time.time()
     logger.info("Preprocessing pipeline started", extra={
@@ -394,64 +393,47 @@ def preprocess_pipeline(
     # Step 1: Convert to grayscale
     grayscale = to_grayscale(image, image_id=image_id)
     
-    # Step 2: Skull stripping (optional)
-    if apply_skull_stripping:
-        try:
-            from app.utils.skull_stripping import skull_strip_hdbet
-            skull_stripped, brain_mask = skull_strip_hdbet(grayscale, image_id=image_id)
-        except Exception as e:
-            logger.warning(f"Skull stripping failed, continuing without it: {e}", extra={
-                'image_id': image_id,
-                'path': None,
-                'stage': 'preprocess'
-            })
-            skull_stripped = grayscale.copy()
-            brain_mask = np.ones_like(grayscale, dtype=np.uint8) * 255
-    else:
-        skull_stripped = grayscale.copy()
-        brain_mask = np.ones_like(grayscale, dtype=np.uint8) * 255
-    
-    # Step 3: Denoise (BEFORE contrast enhancement to avoid noise amplification)
-    # Use Non-Local Means for better denoising on brain tissue
+    # Step 2: Denoise (preserves edges while removing noise)
+    # Use Non-Local Means with lighter settings to preserve detail
     if config.get('use_nlm_denoising', True):
         denoised = denoise_nlm(
-            skull_stripped,
-            h=config.get('nlm_h', 10),
+            grayscale,
+            h=config.get('nlm_h', 8),  # Reduced from 10 to 8 for less blur
             image_id=image_id
         )
     else:
-        # Fallback to median filter
+        # Fallback to median filter (very light)
         denoised = remove_salt_pepper(
-            skull_stripped,
+            grayscale,
             kernel_size=config.get('median_kernel_size', 3),
             image_id=image_id
         )
     
-    # Step 4: Reduce motion artifacts
+    # Step 3: Reduce motion artifacts (minimal filtering)
     motion_reduced = reduce_motion_artifact(
         denoised, 
         image_id=image_id,
         preserve_detail=config.get('preserve_detail', True)
     )
     
-    # Step 5: Enhance contrast (CLAHE applied only inside brain mask)
+    # Step 4: Enhance contrast (CLAHE for better tumor visibility)
     contrast = enhance_contrast_clahe(
         motion_reduced,
         clip_limit=config.get('clahe_clip_limit', 2.0),
         tile_grid_size=config.get('clahe_tile_grid_size', (8, 8)),
-        mask=brain_mask,  # Apply CLAHE only inside brain
+        mask=None,  # Apply to entire image
         image_id=image_id
     )
     
-    # Step 6: Sharpen
+    # Step 5: Sharpen (recover fine details)
     sharpened = unsharp_mask(
         contrast,
-        radius=config.get('unsharp_radius', 1.0),
-        amount=config.get('unsharp_amount', 1.0),
+        radius=config.get('unsharp_radius', 1.5),  # Increased from 1.0 to 1.5 for better sharpness
+        amount=config.get('unsharp_amount', 1.5),  # Increased from 1.0 to 1.5 for better detail
         image_id=image_id
     )
     
-    # Step 7: Normalize (AFTER all enhancements)
+    # Step 6: Normalize (standardize intensity range)
     normalized = normalize_image(
         sharpened,
         method=config.get('normalize_method', 'zscore'),
@@ -467,8 +449,6 @@ def preprocess_pipeline(
     
     return {
         'grayscale': grayscale,
-        'skull_stripped': skull_stripped,
-        'brain_mask': brain_mask,
         'denoised': denoised,
         'motion_reduced': motion_reduced,
         'contrast': contrast,
