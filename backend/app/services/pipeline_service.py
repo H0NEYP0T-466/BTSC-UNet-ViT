@@ -96,7 +96,9 @@ class PipelineService:
             'unsharp_radius': settings.UNSHARP_RADIUS,
             'unsharp_amount': settings.UNSHARP_AMOUNT,
             'preserve_detail': settings.MOTION_PRESERVE_DETAIL,
-            'normalize_method': 'zscore'
+            'normalize_method': 'zscore',
+            'use_nlm_denoising': True,  # Use Non-Local Means for better denoising
+            'nlm_h': settings.NLM_H
         }
         
         preprocessed = preprocess_pipeline(image, config=preprocess_config, image_id=image_id)
