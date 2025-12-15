@@ -103,6 +103,7 @@ def setup_colab_environment():
         return False
     
     # Count .h5 files
+    
     h5_files = list(dataset_path.glob("*.h5"))
     print(f"\n✅ Dataset found: {len(h5_files)} .h5 files")
     
