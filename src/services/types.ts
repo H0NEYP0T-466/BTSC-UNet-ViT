@@ -12,8 +12,6 @@ export interface PreprocessResponse {
   image_id: string;
   original_url: string;
   grayscale_url: string;
-  skull_stripped_url: string;
-  brain_mask_url: string;
   denoised_url: string;
   motion_reduced_url: string;
   contrast_url: string;
@@ -45,8 +43,6 @@ export interface InferenceResponse {
   original_url: string;
   preprocessing: {
     grayscale: string;
-    skull_stripped: string;
-    brain_mask: string;
     denoised: string;
     motion_reduced: string;
     contrast: string;

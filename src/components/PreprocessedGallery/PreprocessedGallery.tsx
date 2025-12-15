@@ -17,8 +17,6 @@ export function PreprocessedGallery({ images }: PreprocessedGalleryProps) {
   
   const stages: Stage[] = [
     { key: 'grayscale', label: 'Grayscale' },
-    { key: 'skull_stripped', label: 'Brain Only (HD-BET)' },
-    { key: 'brain_mask', label: 'Brain Mask' },
     { key: 'denoised', label: 'Denoised' },
     { key: 'motion_reduced', label: 'Motion Reduced' },
     { key: 'contrast', label: 'Contrast Enhanced' },

@@ -87,11 +87,9 @@ def test_normalize_image():
 def test_preprocess_pipeline():
     """Test full preprocessing pipeline."""
     image = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
-    result = preprocess_pipeline(image, apply_skull_stripping=False)  # Skip skull stripping in tests
+    result = preprocess_pipeline(image, apply_skull_stripping=False)
     
     assert 'grayscale' in result
-    assert 'skull_stripped' in result
-    assert 'brain_mask' in result
     assert 'denoised' in result
     assert 'motion_reduced' in result
     assert 'contrast' in result
@@ -103,19 +101,3 @@ def test_preprocess_pipeline():
         assert len(img.shape) == 2
         assert img.dtype == np.uint8
 
-
-def test_skull_stripping_fallback():
-    """Test skull stripping with fallback when HD-BET is not available."""
-    from app.utils.skull_stripping import apply_mask_to_image
-    
-    image = np.random.randint(0, 255, (100, 100), dtype=np.uint8)
-    mask = np.zeros((100, 100), dtype=np.uint8)
-    mask[25:75, 25:75] = 255
-    
-    masked = apply_mask_to_image(image, mask, background_value=0)
-    assert masked.shape == image.shape
-    assert masked.dtype == np.uint8
-    
-    # Check that background is zeroed
-    assert np.all(masked[0:25, :] == 0)
-    assert np.all(masked[:, 0:25] == 0)

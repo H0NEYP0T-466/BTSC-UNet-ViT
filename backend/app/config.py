@@ -79,10 +79,10 @@ class Settings(BaseSettings):
     CLAHE_CLIP_LIMIT: float = 2.0
     CLAHE_TILE_GRID_SIZE: tuple = (8, 8)
     MEDIAN_KERNEL_SIZE: int = 3
-    NLM_H: int = 10
-    UNSHARP_RADIUS: float = 1.0
-    UNSHARP_AMOUNT: float = 1.0
-    MOTION_PRESERVE_DETAIL: bool = True  # Use edge-preserving bilateral filter
+    NLM_H: int = 8  # Reduced from 10 to 8 for less blur
+    UNSHARP_RADIUS: float = 1.5  # Increased from 1.0 to 1.5 for better sharpness
+    UNSHARP_AMOUNT: float = 1.5  # Increased from 1.0 to 1.5 for better detail
+    MOTION_PRESERVE_DETAIL: bool = True  # Use minimal edge-preserving bilateral filter
     
     # Segmentation post-processing parameters
     SEGMENTATION_MIN_AREA: int = 100  # Minimum area for connected components (pixels)

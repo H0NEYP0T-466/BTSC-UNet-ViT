@@ -17,8 +17,6 @@ class PreprocessResponse(BaseModel):
     image_id: str
     original_url: str
     grayscale_url: str
-    skull_stripped_url: str
-    brain_mask_url: str
     denoised_url: str
     motion_reduced_url: str
     contrast_url: str
