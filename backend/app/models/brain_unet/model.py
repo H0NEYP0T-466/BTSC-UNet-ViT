@@ -44,6 +44,9 @@ class BrainUNet(nn.Module):
         self.out_channels = out_channels
         self.features = features
         
+        # Store original in_channels for logging
+        original_in_channels = in_channels
+        
         # Encoder (downsampling path)
         self.encoder = nn.ModuleList()
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
@@ -69,7 +72,7 @@ class BrainUNet(nn.Module):
         self.final_conv = nn.Conv2d(features[0], out_channels, kernel_size=1)
         
         logger.info(
-            f"BrainUNet initialized: in_channels={in_channels}, out_channels={out_channels}, "
+            f"BrainUNet initialized: in_channels={original_in_channels}, out_channels={out_channels}, "
             f"features={features}",
             extra={'image_id': None, 'path': None, 'stage': 'model_init'}
         )

@@ -30,7 +30,7 @@ class BrainUNetInference:
             device: Device to run inference on ('cuda' or 'cpu')
         """
         self.device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
-        self.model_path = model_path or settings.CHECKPOINTS_BRAIN_UNET / "brain_unet_best.pth"
+        self.model_path = model_path or (settings.CHECKPOINTS_BRAIN_UNET / settings.BRAIN_UNET_CHECKPOINT_NAME)
         
         # Load model
         self.model = self._load_model()
