@@ -80,6 +80,7 @@ export function HomePage() {
                 {/* Brain Segmentation Results */}
                 <div className="result-item">
                   <SegmentationOverlay
+                    title="Brain Segmentation"
                     maskUrl={apiClient.getResourceUrl(result.brain_segmentation.mask)}
                     overlayUrl={apiClient.getResourceUrl(result.brain_segmentation.overlay)}
                     segmentedUrl={apiClient.getResourceUrl(result.brain_segmentation.brain_extracted)}
@@ -89,6 +90,7 @@ export function HomePage() {
                 {/* Tumor Segmentation Results */}
                 <div className="result-item">
                   <SegmentationOverlay
+                    title="Tumor Segmentation"
                     maskUrl={apiClient.getResourceUrl(result.tumor_segmentation.mask)}
                     overlayUrl={apiClient.getResourceUrl(result.tumor_segmentation.overlay)}
                     segmentedUrl={apiClient.getResourceUrl(result.tumor_segmentation.segmented)}
