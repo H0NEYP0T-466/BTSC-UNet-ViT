@@ -44,7 +44,8 @@ def extract_brain_hdbet(
     
     try:
         # Import HD-BET (lazy import to avoid startup overhead)
-        from HD_BET.run import run_hd_bet
+        from HD_BET.hd_bet_prediction import get_hdbet_predictor, hdbet_predict
+        import torch
         
         # Create temporary directory for HD-BET processing
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -69,10 +70,23 @@ def extract_brain_hdbet(
             })
             
             # Run HD-BET
-            # Parameters:
-            # - mode='fast' for faster processing (uses lower resolution)
-            # - device='cpu' or 'cuda' depending on availability
+            # Determine device
+            device = torch.device('cpu')  # Use CPU for compatibility
+            
             output_path = temp_dir_path / "output.nii.gz"
+            
+            logger.info("Initializing HD-BET predictor...", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'brain_extraction'
+            })
+            
+            # Initialize predictor (this will download weights on first use)
+            predictor = get_hdbet_predictor(
+                use_tta=False,  # Disable test-time augmentation for speed
+                device=device,
+                verbose=False
+            )
             
             logger.info("Running HD-BET inference...", extra={
                 'image_id': image_id,
@@ -80,21 +94,17 @@ def extract_brain_hdbet(
                 'stage': 'brain_extraction'
             })
             
-            # Run HD-BET skull stripping
-            # Note: HD-BET will create output.nii.gz and output_mask.nii.gz
-            run_hd_bet(
-                mri_fnames=[str(input_path)],
-                output_fnames=[str(output_path)],
-                mode='fast',  # Fast mode for speed
-                device='cpu',  # Use CPU (can be changed to 'cuda' if GPU available)
-                postprocess=True,  # Apply postprocessing for cleaner masks
-                do_tta=False,  # Disable test-time augmentation for speed
-                keep_mask=True,  # Keep the mask file
-                overwrite=True
+            # Run HD-BET prediction
+            hdbet_predict(
+                input_file_or_folder=str(input_path),
+                output_file_or_folder=str(output_path),
+                predictor=predictor,
+                keep_brain_mask=True,  # Keep mask file
+                compute_brain_extracted_image=True  # Compute brain-extracted image
             )
             
             # Load the brain-extracted image and mask
-            mask_path = temp_dir_path / "output_mask.nii.gz"
+            mask_path = temp_dir_path / "output_bet.nii.gz"
             
             if not output_path.exists():
                 logger.error("HD-BET failed to generate output", extra={
@@ -182,3 +192,4 @@ def extract_brain_hdbet(
         # Return original image and full mask on error
         full_mask = np.ones_like(image, dtype=np.uint8) * 255
         return image.copy(), full_mask
+
