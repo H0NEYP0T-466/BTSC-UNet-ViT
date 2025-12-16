@@ -49,10 +49,17 @@ export interface InferenceResponse {
     sharpened: string;
     normalized: string;
   };
-  segmentation: {
+  brain_segmentation: {
+    mask: string;
+    overlay: string;
+    brain_extracted: string;
+  };
+  tumor_segmentation: {
     mask: string;
     overlay: string;
     segmented: string;
+    heatmap?: string;
+    probability_map?: string;
   };
   classification: {
     class: string;
