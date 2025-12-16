@@ -1,6 +1,6 @@
 """
 Image preprocessing utilities for BTSC-UNet-ViT.
-Implements denoising, normalization, contrast enhancement, and brain extraction.
+Implements denoising, normalization, contrast enhancement.
 """
 import time
 from typing import Dict, Optional, Tuple
@@ -10,7 +10,6 @@ from skimage import filters, restoration, exposure
 from skimage.filters import unsharp_mask as sk_unsharp_mask
 from scipy.ndimage import median_filter
 from app.utils.logger import get_logger
-from app.utils.brain_extraction import extract_brain_hdbet
 
 logger = get_logger(__name__)
 
@@ -372,35 +371,26 @@ def normalize_image(
 def preprocess_pipeline(
     image: np.ndarray,
     config: Optional[Dict] = None,
-    image_id: Optional[str] = None,
-    apply_skull_stripping: bool = True
+    image_id: Optional[str] = None
 ) -> Dict[str, np.ndarray]:
     """
-    Run complete preprocessing pipeline with HD-BET brain extraction.
+    Run complete preprocessing pipeline.
     
     Pipeline order (optimized for quality and accuracy):
     1. Convert to grayscale
-    2. Brain extraction using HD-BET (skull-stripping)
-    3. Denoising (removes noise while preserving edges)
-    4. Light motion artifact reduction (minimal blur)
-    5. Contrast enhancement (CLAHE applied only to brain tissue)
-    6. Sharpening (recovers fine details, applied only to brain tissue)
-    7. Normalization (standardizes intensity range)
-    
-    Benefits of HD-BET integration:
-    - Removes skull, neck, eyes, and nose from processing
-    - Prevents false positives from bright non-brain structures
-    - CLAHE and sharpening applied only to brain tissue
-    - Improves tumor segmentation accuracy
+    2. Denoising (removes noise while preserving edges)
+    3. Light motion artifact reduction (minimal blur)
+    4. Contrast enhancement (CLAHE)
+    5. Sharpening (recovers fine details)
+    6. Normalization (standardizes intensity range)
     
     Args:
         image: Input image (RGB or grayscale)
         config: Optional configuration dict with preprocessing parameters
         image_id: Image identifier for logging
-        apply_skull_stripping: Whether to apply HD-BET brain extraction (default: True)
         
     Returns:
-        Dictionary with intermediate preprocessing outputs including brain mask
+        Dictionary with intermediate preprocessing outputs
     """
     start_time = time.time()
     logger.info("Preprocessing pipeline started", extra={
@@ -414,66 +404,48 @@ def preprocess_pipeline(
     # Step 1: Convert to grayscale
     grayscale = to_grayscale(image, image_id=image_id)
     
-    # Step 2: Brain extraction using HD-BET
-    if apply_skull_stripping:
-        brain_extracted, brain_mask = extract_brain_hdbet(grayscale, image_id=image_id)
-        logger.info("HD-BET brain extraction applied", extra={
-            'image_id': image_id,
-            'path': None,
-            'stage': 'preprocess'
-        })
-    else:
-        brain_extracted = grayscale.copy()
-        brain_mask = np.ones_like(grayscale, dtype=np.uint8) * 255
-        logger.info("Skipping brain extraction (disabled)", extra={
-            'image_id': image_id,
-            'path': None,
-            'stage': 'preprocess'
-        })
-    
-    # Step 3: Denoise (preserves edges while removing noise)
+    # Step 2: Denoise (preserves edges while removing noise)
     # Use Non-Local Means with lighter settings to preserve detail
     if config.get('use_nlm_denoising', True):
         denoised = denoise_nlm(
-            brain_extracted,
+            grayscale,
             h=config.get('nlm_h', 8),  # Reduced from 10 to 8 for less blur
             image_id=image_id
         )
     else:
         # Fallback to median filter (very light)
         denoised = remove_salt_pepper(
-            brain_extracted,
+            grayscale,
             kernel_size=config.get('median_kernel_size', 3),
             image_id=image_id
         )
     
-    # Step 4: Reduce motion artifacts (minimal filtering)
+    # Step 3: Reduce motion artifacts (minimal filtering)
     motion_reduced = reduce_motion_artifact(
         denoised, 
         image_id=image_id,
         preserve_detail=config.get('preserve_detail', True)
     )
     
-    # Step 5: Enhance contrast (CLAHE applied only within brain mask)
-    # This prevents neck, eyes, and nose from becoming overly bright
+    # Step 4: Enhance contrast (CLAHE)
     contrast = enhance_contrast_clahe(
         motion_reduced,
         clip_limit=config.get('clahe_clip_limit', 2.0),
         tile_grid_size=config.get('clahe_tile_grid_size', (8, 8)),
-        mask=brain_mask if apply_skull_stripping else None,  # Apply only to brain
+        mask=None,
         image_id=image_id
     )
     
-    # Step 6: Sharpen (recover fine details, only within brain mask)
+    # Step 5: Sharpen (recover fine details)
     sharpened = unsharp_mask(
         contrast,
-        radius=config.get('unsharp_radius', 1.5),  # Increased from 1.0 to 1.5 for better sharpness
-        amount=config.get('unsharp_amount', 1.5),  # Increased from 1.0 to 1.5 for better detail
-        mask=brain_mask if apply_skull_stripping else None,  # Apply only to brain
+        radius=config.get('unsharp_radius', 1.5),
+        amount=config.get('unsharp_amount', 1.5),
+        mask=None,
         image_id=image_id
     )
     
-    # Step 7: Normalize (standardize intensity range)
+    # Step 6: Normalize (standardize intensity range)
     normalized = normalize_image(
         sharpened,
         method=config.get('normalize_method', 'zscore'),
@@ -489,8 +461,6 @@ def preprocess_pipeline(
     
     return {
         'grayscale': grayscale,
-        'brain_extracted': brain_extracted,
-        'brain_mask': brain_mask,
         'denoised': denoised,
         'motion_reduced': motion_reduced,
         'contrast': contrast,

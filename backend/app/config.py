@@ -47,8 +47,10 @@ class Settings(BaseSettings):
 
     # Model checkpoint directories
     CHECKPOINTS_UNET: Path = CHECKPOINTS_DIR / "unet"
+    CHECKPOINTS_BRAIN_UNET: Path = CHECKPOINTS_DIR / "brain_unet"
     CHECKPOINTS_VIT: Path = CHECKPOINTS_DIR / "vit"
     UNET_CHECKPOINT_NAME: str = "unet_best.pth"
+    BRAIN_UNET_CHECKPOINT_NAME: str = "brain_unet_best.pth"
     VIT_CHECKPOINT_NAME: str = "vit_best.pth"
 
     # UNet settings
@@ -92,8 +94,9 @@ class Settings(BaseSettings):
 settings = Settings()
 
 # Ensure required directories exist
-settings.RESOURCES_DIR. mkdir(parents=True, exist_ok=True)
+settings.RESOURCES_DIR.mkdir(parents=True, exist_ok=True)
 settings.CHECKPOINTS_UNET.mkdir(parents=True, exist_ok=True)
+settings.CHECKPOINTS_BRAIN_UNET.mkdir(parents=True, exist_ok=True)
 settings.CHECKPOINTS_VIT.mkdir(parents=True, exist_ok=True)
 settings.UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 settings.ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)

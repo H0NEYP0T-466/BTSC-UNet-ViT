@@ -86,15 +86,14 @@ class PipelineService:
             'unsharp_amount': settings.UNSHARP_AMOUNT,
             'preserve_detail': settings.MOTION_PRESERVE_DETAIL,
             'normalize_method': 'zscore',
-            'use_nlm_denoising': True,  # Use Non-Local Means for better denoising
+            'use_nlm_denoising': True,
             'nlm_h': settings.NLM_H
         }
         
         preprocessed = preprocess_pipeline(
             image, 
             config=preprocess_config, 
-            image_id=image_id,
-            apply_skull_stripping=True  # Enable HD-BET brain extraction
+            image_id=image_id
         )
         
         # Save preprocessing artifacts
