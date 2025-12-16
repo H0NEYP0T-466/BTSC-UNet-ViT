@@ -5,14 +5,15 @@ interface SegmentationOverlayProps {
   maskUrl: string;
   overlayUrl: string;
   segmentedUrl: string;
+  title?: string;
 }
 
-export function SegmentationOverlay({ maskUrl, overlayUrl, segmentedUrl }: SegmentationOverlayProps) {
+export function SegmentationOverlay({ maskUrl, overlayUrl, segmentedUrl, title = 'Segmentation Results' }: SegmentationOverlayProps) {
   const [opacity, setOpacity] = useState(0.5);
 
   return (
     <div className="segmentation-overlay card">
-      <h3 className="overlay-title">Segmentation Results</h3>
+      <h3 className="overlay-title">{title}</h3>
       
       <div className="overlay-grid">
         <div className="overlay-item">
