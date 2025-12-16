@@ -17,8 +17,6 @@ class PreprocessResponse(BaseModel):
     image_id: str
     original_url: str
     grayscale_url: str
-    brain_extracted_url: str
-    brain_mask_url: str
     denoised_url: str
     motion_reduced_url: str
     contrast_url: str
@@ -27,8 +25,18 @@ class PreprocessResponse(BaseModel):
     log_context: LogContext
 
 
+class BrainSegmentResponse(BaseModel):
+    """Response for brain segmentation endpoint."""
+    image_id: str
+    mask_url: str
+    overlay_url: str
+    brain_extracted_url: str
+    brain_area_pct: float
+    log_context: LogContext
+
+
 class SegmentResponse(BaseModel):
-    """Response for segmentation endpoint."""
+    """Response for tumor segmentation endpoint."""
     image_id: str
     mask_url: str
     overlay_url: str
@@ -55,7 +63,8 @@ class InferenceResponse(BaseModel):
     image_id: str
     original_url: str
     preprocessing: Dict[str, str]
-    segmentation: Dict[str, str]
+    brain_segmentation: Dict[str, str]
+    tumor_segmentation: Dict[str, str]
     classification: Dict[str, Any]
     duration_seconds: float
     log_context: Dict[str, Any]
