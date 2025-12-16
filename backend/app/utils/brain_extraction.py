@@ -88,6 +88,9 @@ def extract_brain_hdbet(
                 verbose=False
             )
             
+            if predictor is None:
+                raise RuntimeError("Failed to initialize HD-BET predictor")
+            
             logger.info("Running HD-BET inference...", extra={
                 'image_id': image_id,
                 'path': None,
@@ -139,8 +142,13 @@ def extract_brain_hdbet(
             
             # Ensure brain_extracted is in uint8 range for consistency
             if brain_extracted.max() > 0:
-                brain_extracted = ((brain_extracted - brain_extracted.min()) / 
-                                 (brain_extracted.max() - brain_extracted.min()) * 255).astype(np.uint8)
+                value_range = brain_extracted.max() - brain_extracted.min()
+                if value_range > 0:
+                    brain_extracted = ((brain_extracted - brain_extracted.min()) / 
+                                     value_range * 255).astype(np.uint8)
+                else:
+                    # Uniform image, just convert to uint8
+                    brain_extracted = brain_extracted.astype(np.uint8)
             else:
                 brain_extracted = brain_extracted.astype(np.uint8)
             
