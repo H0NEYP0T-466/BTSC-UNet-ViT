@@ -1,18 +1,107 @@
 # HD-BET Brain Extraction Setup Guide
 
+## Quick Start
+
+**New to HD-BET?** Follow these 3 simple steps:
+
+1. **Install HD-BET:**
+   ```bash
+   pip install HD-BET
+   ```
+
+2. **Download model parameters:**
+   ```bash
+   cd backend
+   python setup_hdbet.py
+   ```
+
+3. **Start the backend server:**
+   ```bash
+   cd backend
+   uvicorn app.main:app --reload --port 8080
+   ```
+
+That's it! HD-BET is now ready to use.
+
+---
+
 ## Overview
 
 This project uses **HD-BET (Hierarchical Deep Brain Extraction Tool)** for skull-stripping in brain MRI images. HD-BET is a state-of-the-art deep learning tool specifically designed to extract brain tissue from MRI scans.
 
-## Installation
+## Installation and Setup
 
-HD-BET is included in the `requirements.txt` file and can be installed with:
+### Step 1: Install HD-BET Package
+
+HD-BET is included in the `requirements.txt` file. Install it with:
 
 ```bash
 pip install HD-BET
 ```
 
-That's it! No additional setup, weight downloads, or configuration is needed.
+### Step 2: Download HD-BET Model Parameters
+
+HD-BET requires model parameters to be downloaded on first use. The parameters are automatically downloaded to your home directory when you first run HD-BET.
+
+**IMPORTANT**: You must trigger the parameter download by running HD-BET at least once.
+
+#### Quick Setup (Recommended)
+
+We've provided a setup script that automatically downloads the HD-BET parameters:
+
+**Windows:**
+```cmd
+cd backend
+python setup_hdbet.py
+```
+
+**Linux/Mac:**
+```bash
+cd backend
+python setup_hdbet.py
+```
+
+This script will:
+1. Check if HD-BET is installed
+2. Download the model parameters (first run only)
+3. Run a test prediction to verify everything works
+4. Show you where the parameters were saved
+
+The script will display progress and confirm when the setup is complete.
+
+#### What the Script Does
+
+The setup script creates a test image and runs HD-BET once, which triggers the automatic download of model parameters to:
+- **Windows**: `C:\Users\<YourUsername>\hd-bet_params\release_2.0.0\`
+- **Linux/Mac**: `~/hd-bet_params/release_2.0.0/`
+
+### Step 3: Verify Installation
+
+After running the setup script, verify that the parameters were downloaded:
+
+**Windows:**
+```cmd
+dir "%USERPROFILE%\hd-bet_params\release_2.0.0"
+```
+
+**Linux/Mac:**
+```bash
+ls -la ~/hd-bet_params/release_2.0.0/
+```
+
+You should see files including `dataset.json` and model checkpoint files.
+
+### Alternative: Manual Download
+
+If the automatic download fails, you can manually download the HD-BET parameters:
+
+1. **Download from the official HD-BET repository**: The parameters are hosted by the HD-BET team and should be automatically downloaded. If this fails, check your internet connection and firewall settings.
+
+2. **Create the directory structure**:
+   - Windows: `C:\Users\<YourUsername>\hd-bet_params\release_2.0.0\`
+   - Linux/Mac: `~/hd-bet_params/release_2.0.0/`
+
+3. **Contact the repository owner** or check the HD-BET GitHub issues if automatic download continues to fail.
 
 ## What HD-BET Does
 
@@ -140,6 +229,68 @@ If you get `ImportError: No module named 'HD_BET'`:
 ```bash
 pip install HD-BET
 ```
+
+### Missing Model Parameters Error
+
+If you see an error like:
+```
+[Errno 2] No such file or directory: 'C:\\Users\\<Username>\\hd-bet_params\\release_2.0.0\\dataset.json'
+```
+
+This means the HD-BET model parameters have not been downloaded yet. **Solution:**
+
+1. Run the setup script to download the parameters:
+   ```bash
+   cd backend
+   python setup_hdbet.py
+   ```
+
+2. If the setup script fails, try these manual steps:
+
+   **Windows:**
+   ```cmd
+   mkdir "%USERPROFILE%\hd-bet_params"
+   ```
+   
+   **Linux/Mac:**
+   ```bash
+   mkdir -p ~/hd-bet_params
+   ```
+   
+   Then run the setup script again.
+
+3. If you're behind a corporate firewall or proxy, the automatic download may fail. Check your network settings and ensure you can access external URLs.
+
+### Setup Script Fails
+
+If `setup_hdbet.py` fails with an error:
+
+1. **Check your internet connection** - HD-BET needs to download ~100MB of model parameters from the internet.
+
+2. **Check Python dependencies** - Ensure all packages in `requirements.txt` are installed:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Check disk space** - Ensure you have at least 500MB of free space in your home directory.
+
+4. **Try running with verbose output**:
+   ```bash
+   python setup_hdbet.py
+   ```
+   This will show detailed progress and error messages.
+
+### Permission Issues
+
+If you get permission errors when creating directories:
+
+**Windows:**
+- Run Command Prompt as Administrator
+- Or create the directory manually: `mkdir "%USERPROFILE%\hd-bet_params"`
+
+**Linux/Mac:**
+- Check your home directory permissions: `ls -la ~`
+- Create the directory manually: `mkdir -p ~/hd-bet_params`
 
 ### Memory Issues
 

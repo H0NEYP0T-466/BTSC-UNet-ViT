@@ -45,7 +45,17 @@ cd backend
 pip install -r requirements.txt
 ```
 
-3. Configure environment:
+3. Setup HD-BET (brain extraction tool):
+```bash
+cd backend
+python setup_hdbet.py
+```
+
+**Important:** HD-BET requires model parameters to be downloaded. The `setup_hdbet.py` script will automatically download them (~100MB) on first run. This is a one-time setup step.
+
+If you encounter errors with HD-BET, see [../hdbet.md](../hdbet.md) for detailed troubleshooting.
+
+4. Configure environment:
 ```bash
 # Create .env file (optional, defaults in config.py)
 cp .env.example .env
@@ -240,11 +250,12 @@ pytest tests/
 ## Preprocessing Operations
 
 1. **Grayscale Conversion**: Convert to single channel
-2. **Denoising**: Median filter for salt & pepper noise
-3. **Motion Artifact Reduction**: Deblurring and normalization
-4. **Contrast Enhancement**: CLAHE (Contrast Limited Adaptive Histogram Equalization)
-5. **Edge Sharpening**: Unsharp mask
-6. **Normalization**: Z-score or min-max normalization
+2. **HD-BET Brain Extraction**: Skull-stripping to isolate brain tissue (see [../hdbet.md](../hdbet.md))
+3. **Denoising**: Non-Local Means denoising for noise reduction
+4. **Motion Artifact Reduction**: Minimal edge-preserving filtering
+5. **Contrast Enhancement**: CLAHE (Contrast Limited Adaptive Histogram Equalization) applied to brain mask
+6. **Edge Sharpening**: Unsharp mask applied to brain mask
+7. **Normalization**: Z-score or min-max normalization
 
 ## Model Details
 
@@ -261,6 +272,13 @@ pytest tests/
 - Fine-tuned from ImageNet pretrained weights
 
 ## Troubleshooting
+
+### HD-BET setup issues
+- **Error: `[Errno 2] No such file or directory: ...hd-bet_params...dataset.json`**
+  - Solution: Run `python setup_hdbet.py` in the backend directory
+  - See [../hdbet.md](../hdbet.md) for detailed troubleshooting
+- **HD-BET not installed**
+  - Solution: `pip install HD-BET`
 
 ### Model not found
 - Ensure checkpoints are at:

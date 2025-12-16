@@ -5,7 +5,7 @@ Brain Tumor Segmentation and Classification using UNet and Vision Transformer (V
 ## Overview
 
 Full-stack application for automated brain tumor analysis in MRI images:
-- **Preprocessing**: Edge-preserving denoising, contrast enhancement, normalization
+- **Preprocessing**: HD-BET brain extraction, edge-preserving denoising, contrast enhancement, normalization
 - **Segmentation**: Pretrained UNet-based tumor-only detection
 - **Classification**: ViT-based tumor type classification
 
@@ -33,7 +33,7 @@ Frontend (React + TypeScript) → Backend (FastAPI + Python) → Models (Pretrai
 
 ### Pipeline
 1. User uploads brain MRI image
-2. Image preprocessing (edge-preserving denoising, contrast enhancement, normalization)
+2. Image preprocessing (HD-BET brain extraction, edge-preserving denoising, contrast enhancement, normalization)
 3. Pretrained UNet segments tumor region only
 4. ViT classifies tumor type
 5. Results displayed with confidence scores
@@ -47,6 +47,9 @@ cd backend
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+
+# Setup HD-BET brain extraction (one-time setup)
+python setup_hdbet.py
 
 # Download pretrained model (one-time setup)
 python -m app.models.pretrained_unet.download_model
@@ -77,7 +80,8 @@ App: http://localhost:5173
 ### Backend
 - **Verbose Logging**: Structured logging at every stage
 - **RESTful API**: FastAPI with automatic OpenAPI docs
-- **Improved Preprocessing Pipeline**: Edge-preserving 6-stage image enhancement
+- **HD-BET Brain Extraction**: Skull-stripping to isolate brain tissue
+- **Improved Preprocessing Pipeline**: Edge-preserving 7-stage image enhancement
 - **Pretrained UNet Segmentation**: MONAI-based tumor-only detection (default)
 - **Local UNet Training**: Optional local training on BraTS dataset
 - **ViT Classification**: Pretrained transformer fine-tuned on medical images
@@ -123,7 +127,8 @@ App: http://localhost:5173
 
 ## Documentation
 
-- [Pretrained UNet Setup](PRETRAINED_UNET_SETUP.md) - **START HERE** for quick setup
+- [HD-BET Brain Extraction Setup](hdbet.md) - **Required first-time setup** for brain extraction
+- [Pretrained UNet Setup](PRETRAINED_UNET_SETUP.md) - Quick setup for pretrained models
 - [Backend README](backend/README.md) - API, training, deployment
 - [Frontend README](frontend_README.md) - Components, styling, development
 
@@ -236,6 +241,7 @@ npm run build
 - PyTorch 2.6.0+ (security patched)
 - timm (Vision Transformers)
 - MONAI 1.5.1+ (security patched)
+- HD-BET (brain extraction)
 - scikit-image
 - OpenCV
 
