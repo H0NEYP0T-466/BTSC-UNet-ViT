@@ -6,7 +6,6 @@ from typing import Dict, Optional
 import numpy as np
 from app.utils.preprocessing import preprocess_pipeline
 from app.models.unet.infer_unet import get_unet_inference
-from app.models.pretrained_unet.infer_pretrained import get_pretrained_unet_inference
 from app.models.vit.infer_vit import get_vit_inference
 from app.services.storage_service import get_storage_service
 from app.config import settings
@@ -21,7 +20,6 @@ class PipelineService:
     def __init__(self):
         self.storage = get_storage_service()
         self.unet = None  # Lazy load
-        self.pretrained_unet = None  # Lazy load
         self.vit = None  # Lazy load
         
         logger.info("Pipeline service initialized", extra={
@@ -32,23 +30,14 @@ class PipelineService:
     
     def _ensure_models_loaded(self):
         """Ensure models are loaded (lazy initialization)."""
-        # Load UNet model based on configuration
-        if settings.USE_PRETRAINED_UNET:
-            if self.pretrained_unet is None:
-                logger.info("Loading Pretrained UNet model", extra={
-                    'image_id': None,
-                    'path': None,
-                    'stage': 'model_load'
-                })
-                self.pretrained_unet = get_pretrained_unet_inference()
-        else:
-            if self.unet is None:
-                logger.info("Loading local trained UNet model", extra={
-                    'image_id': None,
-                    'path': None,
-                    'stage': 'model_load'
-                })
-                self.unet = get_unet_inference()
+        # Load local trained UNet model
+        if self.unet is None:
+            logger.info("Loading local trained UNet model", extra={
+                'image_id': None,
+                'path': None,
+                'stage': 'model_load'
+            })
+            self.unet = get_unet_inference()
         
         if self.vit is None:
             logger.info("Loading ViT model", extra={
@@ -101,7 +90,12 @@ class PipelineService:
             'nlm_h': settings.NLM_H
         }
         
-        preprocessed = preprocess_pipeline(image, config=preprocess_config, image_id=image_id)
+        preprocessed = preprocess_pipeline(
+            image, 
+            config=preprocess_config, 
+            image_id=image_id,
+            apply_skull_stripping=True  # Enable HD-BET brain extraction
+        )
         
         # Save preprocessing artifacts
         preprocess_urls = {}
@@ -116,8 +110,7 @@ class PipelineService:
         })
         
         # Step 2: Segmentation
-        model_type = "Pretrained UNet" if settings.USE_PRETRAINED_UNET else "Local UNet"
-        logger.info(f"Step 2: {model_type} segmentation", extra={
+        logger.info("Step 2: Local UNet segmentation", extra={
             'image_id': image_id,
             'path': None,
             'stage': 'pipeline_segment'
@@ -125,17 +118,11 @@ class PipelineService:
         
         self._ensure_models_loaded()
         
-        # Use appropriate UNet model based on configuration
-        if settings.USE_PRETRAINED_UNET:
-            segmentation_results = self.pretrained_unet.segment_image(
-                preprocessed['normalized'],
-                image_id=image_id
-            )
-        else:
-            segmentation_results = self.unet.segment_image(
-                preprocessed['normalized'],
-                image_id=image_id
-            )
+        # Use local trained UNet model
+        segmentation_results = self.unet.segment_image(
+            preprocessed['normalized'],
+            image_id=image_id
+        )
         
         # Save segmentation artifacts
         segment_urls = {}

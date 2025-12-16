@@ -18,3 +18,4 @@ albumentations==1.4.23
 tqdm==4.67.1
 python-dotenv==1.0.1
 h5py==3.11.0
+HD-BET

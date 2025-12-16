@@ -18,14 +18,15 @@ router = APIRouter(prefix="/preprocess", tags=["preprocessing"])
 @router.post("", response_model=PreprocessResponse)
 async def preprocess_image(file: UploadFile = File(...)):
     """
-    Preprocess uploaded image with quality-focused enhancement.
+    Preprocess uploaded image with HD-BET brain extraction and quality-focused enhancement.
     
     Pipeline:
     - Converts to grayscale
+    - Extracts brain using HD-BET (removes skull, neck, eyes)
     - Denoises (preserves edges)
     - Reduces motion artifacts (minimal blur)
-    - Enhances contrast (CLAHE)
-    - Sharpens edges (recovers detail)
+    - Enhances contrast (CLAHE, applied only to brain tissue)
+    - Sharpens edges (recovers detail, applied only to brain tissue)
     - Normalizes intensity (standardizes range)
     """
     start_time = time.time()
@@ -54,7 +55,7 @@ async def preprocess_image(file: UploadFile = File(...)):
         # Save original
         original_url = storage.save_upload(image, image_id)
         
-        # Preprocess without skull stripping
+        # Preprocess with HD-BET brain extraction
         config = {
             'median_kernel_size': settings.MEDIAN_KERNEL_SIZE,
             'clahe_clip_limit': settings.CLAHE_CLIP_LIMIT,
@@ -71,7 +72,7 @@ async def preprocess_image(file: UploadFile = File(...)):
             image, 
             config=config, 
             image_id=image_id,
-            apply_skull_stripping=False  # Disabled
+            apply_skull_stripping=True  # Enable HD-BET brain extraction
         )
         
         # Save all stages
@@ -92,6 +93,8 @@ async def preprocess_image(file: UploadFile = File(...)):
             image_id=image_id,
             original_url=storage.get_artifact_url(original_url),
             grayscale_url=urls['grayscale'],
+            brain_extracted_url=urls['brain_extracted'],
+            brain_mask_url=urls['brain_mask'],
             denoised_url=urls['denoised'],
             motion_reduced_url=urls['motion_reduced'],
             contrast_url=urls['contrast'],
