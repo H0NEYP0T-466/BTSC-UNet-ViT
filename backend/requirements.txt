@@ -19,3 +19,4 @@ tqdm==4.67.1
 python-dotenv==1.0.1
 h5py==3.11.0
 nibabel==5.3.2
+SimpleITK==2.3.1
