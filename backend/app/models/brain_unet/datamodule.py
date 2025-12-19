@@ -204,7 +204,7 @@ class NFBSDataset(Dataset):
                 # Catch expected errors during file loading and processing
                 # - FileNotFoundError: missing NIfTI files
                 # - OSError: corrupted files or I/O issues
-                # - ValueError: invalid data (e.g., empty arrays from nibabel)
+                # - ValueError: invalid NIfTI format, corrupted headers, or processing errors
                 except (FileNotFoundError, ValueError, OSError) as e:
                     logger.error(
                         f"Error preloading {subject_path.name}: {e}",

@@ -11,6 +11,10 @@ import time
 backend_path = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(backend_path))
 
+# Conservative speedup cap to account for non-I/O bottlenecks
+# (memory bandwidth, CPU processing, progress bar overhead, etc.)
+MAX_PRACTICAL_SPEEDUP = 20
+
 
 def test_preload_optimization():
     """
@@ -105,10 +109,6 @@ def estimate_speedup():
     total_slices = 19125
     slices_per_subject = total_slices / num_subjects
     
-    # Conservative speedup cap to account for non-I/O bottlenecks
-    # (memory bandwidth, CPU processing, progress bar overhead, etc.)
-    MAX_PRACTICAL_SPEEDUP = 20
-    
     print(f"\nDataset characteristics:")
     print(f"   Total subjects: {num_subjects}")
     print(f"   Total slices: {total_slices}")
@@ -141,7 +141,7 @@ def estimate_speedup():
     print(f"   Glob calls: {speedup_glob:.1f}x faster")
     print(f"   Overall I/O: {speedup_total:.1f}x reduction in file operations")
     
-    # Estimate actual time improvement
+    # Estimate actual time improvement using module-level constant
     old_time_per_slice = 1 / 1.77  # From problem statement: 1.77 it/s
     estimated_new_time_per_slice = old_time_per_slice / min(speedup_total, MAX_PRACTICAL_SPEEDUP)
     estimated_new_rate = 1 / estimated_new_time_per_slice
