@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 from app.models.brain_unet.model import get_brain_unet_model
 from app.models.brain_unet.utils import DiceBCELoss, visualize_batch, calculate_iou
@@ -37,7 +38,9 @@ class BrainUNetTrainer:
         learning_rate: float = 1e-4,
         checkpoint_dir: Optional[Path] = None,
         visualize_every: int = 5,
-        use_amp: bool = True
+        use_amp: bool = True,
+        early_stopping_patience: int = 10,
+        tensorboard_dir: Optional[Path] = None
     ):
         self.model = model.to(device)
         self.train_loader = train_loader
@@ -47,8 +50,12 @@ class BrainUNetTrainer:
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         self.visualize_every = visualize_every
         self.use_amp = use_amp and device == 'cuda'
+        
+        # Early stopping
+        self.early_stopping_patience = early_stopping_patience
+        self.epochs_without_improvement = 0
 
-        self.optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
+        self.optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
         
         # Use combined Dice + BCE loss
         self.criterion = DiceBCELoss(dice_weight=0.5, bce_weight=0.5)
@@ -62,10 +69,17 @@ class BrainUNetTrainer:
         self.scaler = torch.cuda.amp.GradScaler() if self.use_amp else None
 
         self.best_dice = 0.0
+        
+        # TensorBoard writer
+        self.tensorboard_dir = tensorboard_dir or (self.checkpoint_dir / "tensorboard")
+        self.tensorboard_dir.mkdir(parents=True, exist_ok=True)
+        self.writer = SummaryWriter(log_dir=str(self.tensorboard_dir))
 
         logger.info(
             f"BrainUNet trainer initialized: lr={learning_rate}, device={device}, "
-            f"loss=DiceBCE, scheduler=ReduceLROnPlateau, use_amp={self.use_amp}",
+            f"loss=DiceBCE, scheduler=ReduceLROnPlateau, use_amp={self.use_amp}, "
+            f"early_stopping_patience={early_stopping_patience}, "
+            f"tensorboard_dir={self.tensorboard_dir}",
             extra={'image_id': None, 'path': str(self.checkpoint_dir), 'stage': 'train_init'}
         )
 
@@ -233,6 +247,15 @@ class BrainUNetTrainer:
             # Update learning rate
             self.scheduler.step(val_dice)
             current_lr = self.optimizer.param_groups[0]['lr']
+            
+            # Log to TensorBoard
+            self.writer.add_scalar('Loss/train', train_loss, epoch)
+            self.writer.add_scalar('Loss/val', val_loss, epoch)
+            self.writer.add_scalar('Dice/train', train_dice, epoch)
+            self.writer.add_scalar('Dice/val', val_dice, epoch)
+            self.writer.add_scalar('IoU/val', val_iou, epoch)
+            self.writer.add_scalar('Accuracy/val', val_acc, epoch)
+            self.writer.add_scalar('Learning_Rate', current_lr, epoch)
 
             # Print epoch summary
             print(f"\nEpoch {epoch} Summary:")
@@ -242,9 +265,11 @@ class BrainUNetTrainer:
                   f"iou={val_iou:.4f}, acc={val_acc:.4f}")
             print(f"  LR: {current_lr:.6f}")
 
-            # Save best model
+            # Save best model and check for improvement
             if val_dice > self.best_dice:
                 self.best_dice = val_dice
+                self.epochs_without_improvement = 0
+                
                 best_path = self.checkpoint_dir / "brain_unet_best.pth"
                 torch.save({
                     'epoch': epoch,
@@ -254,6 +279,9 @@ class BrainUNetTrainer:
                     'iou_score': val_iou
                 }, best_path)
                 print(f"  ✅ Saved best model (dice={val_dice:.4f}) to {best_path}")
+            else:
+                self.epochs_without_improvement += 1
+                print(f"  ⚠️  No improvement for {self.epochs_without_improvement} epoch(s)")
 
             # Save last model
             last_path = self.checkpoint_dir / "brain_unet_last.pth"
@@ -270,7 +298,21 @@ class BrainUNetTrainer:
                 f"val_dice={val_dice:.4f}, best_dice={self.best_dice:.4f}",
                 extra={'image_id': None, 'path': str(self.checkpoint_dir), 'stage': 'train_epoch'}
             )
+            
+            # Early stopping check
+            if self.epochs_without_improvement >= self.early_stopping_patience:
+                print(f"\n{'='*80}")
+                print(f"Early stopping triggered after {epoch} epochs")
+                print(f"No improvement for {self.early_stopping_patience} consecutive epochs")
+                print(f"Best Dice: {self.best_dice:.4f}")
+                print(f"{'='*80}")
+                break
 
+        # Close TensorBoard writer
+        self.writer.close()
+        
         print(f"\n{'='*80}")
         print(f"Training completed! Best Dice: {self.best_dice:.4f}")
+        print(f"TensorBoard logs saved to: {self.tensorboard_dir}")
+        print(f"To view: tensorboard --logdir {self.tensorboard_dir}")
         print(f"{'='*80}")
