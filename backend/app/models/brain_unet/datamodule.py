@@ -22,6 +22,9 @@ class NFBSDataset(Dataset):
     Each subject folder contains:
     - sub-*_T1w.nii.gz: Raw T1w MRI scan
     - sub-*_T1w_brainmask.nii.gz: Binary brain mask
+    
+    Optimization: Pre-loads and caches all slices in memory during initialization
+    to avoid repeated disk I/O during training.
     """
     
     def __init__(
@@ -29,7 +32,8 @@ class NFBSDataset(Dataset):
         root_dir: Path,
         transform: Optional[callable] = None,
         image_size: Tuple[int, int] = (256, 256),
-        slice_range: Optional[Tuple[int, int]] = None
+        slice_range: Optional[Tuple[int, int]] = None,
+        cache_in_memory: bool = True
     ):
         """
         Initialize NFBS dataset.
@@ -39,11 +43,13 @@ class NFBSDataset(Dataset):
             transform: Optional transforms to apply
             image_size: Target image size (H, W)
             slice_range: Optional (start, end) slice indices to use from 3D volumes
+            cache_in_memory: If True, pre-load and cache all slices in memory (faster training)
         """
         self.root_dir = Path(root_dir)
         self.transform = transform
         self.image_size = image_size
         self.slice_range = slice_range
+        self.cache_in_memory = cache_in_memory
         
         # Find all subject folders
         self.subjects = sorted([d for d in self.root_dir.iterdir() if d.is_dir()])
@@ -53,13 +59,22 @@ class NFBSDataset(Dataset):
                 'image_id': None, 'path': str(root_dir), 'stage': 'dataset_init'
             })
             self.sample_indices = []
+            self.cache = {}
         else:
             # Build index: (subject_path, slice_idx) for each valid slice
             self.sample_indices = self._build_index()
+            
+            # Pre-load all slices into memory if caching is enabled
+            self.cache = {}
+            if self.cache_in_memory:
+                logger.info(f"Pre-loading {len(self.sample_indices)} slices into memory...", extra={
+                    'image_id': None, 'path': str(root_dir), 'stage': 'dataset_init'
+                })
+                self._preload_data()
         
         logger.info(
             f"NFBS Dataset initialized: {len(self.sample_indices)} slices from "
-            f"{len(self.subjects)} subjects in {root_dir}",
+            f"{len(self.subjects)} subjects in {root_dir}, cache_in_memory={cache_in_memory}",
             extra={'image_id': None, 'path': str(root_dir), 'stage': 'dataset_init'}
         )
     
@@ -117,6 +132,49 @@ class NFBSDataset(Dataset):
         
         return sample_indices
     
+    def _preload_data(self):
+        """
+        Pre-load all slices into memory cache.
+        This significantly speeds up training by avoiding repeated disk I/O.
+        """
+        from tqdm import tqdm
+        
+        for idx in tqdm(range(len(self.sample_indices)), desc="Loading slices into memory"):
+            subject_path, slice_idx = self.sample_indices[idx]
+            
+            # Find files
+            t1_files = list(subject_path.glob("*_T1w.nii.gz"))
+            mask_files = list(subject_path.glob("*_brainmask.nii.gz"))
+            
+            # Load 3D volumes
+            t1_img = nib.load(t1_files[0])
+            mask_img = nib.load(mask_files[0])
+            
+            t1_data = t1_img.get_fdata()
+            mask_data = mask_img.get_fdata()
+            
+            # Extract 2D slice
+            image_slice = t1_data[:, :, slice_idx].astype(np.float32)
+            mask_slice = mask_data[:, :, slice_idx].astype(np.float32)
+            
+            # Normalize image to [0, 1]
+            if image_slice.max() > 0:
+                image_slice = (image_slice - image_slice.min()) / (image_slice.max() - image_slice.min())
+            
+            # Binarize mask (any non-zero value is brain)
+            mask_slice = (mask_slice > 0).astype(np.float32)
+            
+            # Resize to target size
+            image_slice = cv2.resize(image_slice, self.image_size, interpolation=cv2.INTER_LINEAR)
+            mask_slice = cv2.resize(mask_slice, self.image_size, interpolation=cv2.INTER_NEAREST)
+            
+            # Store in cache
+            self.cache[idx] = (image_slice, mask_slice)
+        
+        logger.info(f"Pre-loaded {len(self.cache)} slices into memory", extra={
+            'image_id': None, 'path': str(self.root_dir), 'stage': 'dataset_preload'
+        })
+    
     def __len__(self) -> int:
         return len(self.sample_indices)
     
@@ -129,33 +187,41 @@ class NFBSDataset(Dataset):
                 - image_tensor: shape [1, H, W] (single channel T1w)
                 - mask_tensor: shape [1, H, W] (binary brain mask)
         """
-        subject_path, slice_idx = self.sample_indices[idx]
-        
-        # Find files
-        t1_files = list(subject_path.glob("*_T1w.nii.gz"))
-        mask_files = list(subject_path.glob("*_brainmask.nii.gz"))
-        
-        # Load 3D volumes
-        t1_img = nib.load(t1_files[0])
-        mask_img = nib.load(mask_files[0])
-        
-        t1_data = t1_img.get_fdata()
-        mask_data = mask_img.get_fdata()
-        
-        # Extract 2D slice
-        image_slice = t1_data[:, :, slice_idx].astype(np.float32)
-        mask_slice = mask_data[:, :, slice_idx].astype(np.float32)
-        
-        # Normalize image to [0, 1]
-        if image_slice.max() > 0:
-            image_slice = (image_slice - image_slice.min()) / (image_slice.max() - image_slice.min())
-        
-        # Binarize mask (any non-zero value is brain)
-        mask_slice = (mask_slice > 0).astype(np.float32)
-        
-        # Resize to target size
-        image_slice = cv2.resize(image_slice, self.image_size, interpolation=cv2.INTER_LINEAR)
-        mask_slice = cv2.resize(mask_slice, self.image_size, interpolation=cv2.INTER_NEAREST)
+        # Use cached data if available
+        if self.cache_in_memory and idx in self.cache:
+            image_slice, mask_slice = self.cache[idx]
+            # Make copies to avoid modifying cached data
+            image_slice = image_slice.copy()
+            mask_slice = mask_slice.copy()
+        else:
+            # Load from disk (fallback for non-cached mode)
+            subject_path, slice_idx = self.sample_indices[idx]
+            
+            # Find files
+            t1_files = list(subject_path.glob("*_T1w.nii.gz"))
+            mask_files = list(subject_path.glob("*_brainmask.nii.gz"))
+            
+            # Load 3D volumes
+            t1_img = nib.load(t1_files[0])
+            mask_img = nib.load(mask_files[0])
+            
+            t1_data = t1_img.get_fdata()
+            mask_data = mask_img.get_fdata()
+            
+            # Extract 2D slice
+            image_slice = t1_data[:, :, slice_idx].astype(np.float32)
+            mask_slice = mask_data[:, :, slice_idx].astype(np.float32)
+            
+            # Normalize image to [0, 1]
+            if image_slice.max() > 0:
+                image_slice = (image_slice - image_slice.min()) / (image_slice.max() - image_slice.min())
+            
+            # Binarize mask (any non-zero value is brain)
+            mask_slice = (mask_slice > 0).astype(np.float32)
+            
+            # Resize to target size
+            image_slice = cv2.resize(image_slice, self.image_size, interpolation=cv2.INTER_LINEAR)
+            mask_slice = cv2.resize(mask_slice, self.image_size, interpolation=cv2.INTER_NEAREST)
         
         # Apply transforms if provided
         if self.transform:
@@ -181,7 +247,8 @@ def create_brain_unet_dataloaders(
     train_split: float = 0.8,
     image_size: Tuple[int, int] = (256, 256),
     transform: Optional[callable] = None,
-    slice_range: Optional[Tuple[int, int]] = None
+    slice_range: Optional[Tuple[int, int]] = None,
+    cache_in_memory: bool = True
 ) -> Tuple[DataLoader, DataLoader]:
     """
     Create train and validation dataloaders for Brain UNet.
@@ -189,11 +256,12 @@ def create_brain_unet_dataloaders(
     Args:
         root_dir: Root directory of NFBS dataset
         batch_size: Batch size
-        num_workers: Number of worker processes
+        num_workers: Number of worker processes (set to 0 if cache_in_memory=True)
         train_split: Fraction of data for training
         image_size: Target image size (H, W)
         transform: Optional transforms to apply
         slice_range: Optional (start, end) slice indices to use
+        cache_in_memory: If True, pre-load all data into memory (faster training)
         
     Returns:
         Tuple of (train_loader, val_loader)
@@ -204,12 +272,20 @@ def create_brain_unet_dataloaders(
         'image_id': None, 'path': str(root_dir), 'stage': 'dataloader_init'
     })
     
+    # When caching in memory, use num_workers=0 to avoid multiprocessing overhead
+    if cache_in_memory and num_workers > 0:
+        logger.info("Setting num_workers=0 because cache_in_memory=True", extra={
+            'image_id': None, 'path': str(root_dir), 'stage': 'dataloader_init'
+        })
+        num_workers = 0
+    
     # Create full dataset
     full_dataset = NFBSDataset(
         root_dir=root_dir,
         transform=transform,
         image_size=image_size,
-        slice_range=slice_range
+        slice_range=slice_range,
+        cache_in_memory=cache_in_memory
     )
     
     if len(full_dataset) == 0:
@@ -234,7 +310,8 @@ def create_brain_unet_dataloaders(
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
-        pin_memory=torch.cuda.is_available()
+        pin_memory=torch.cuda.is_available(),
+        persistent_workers=num_workers > 0  # Keep workers alive between epochs
     )
     
     val_loader = DataLoader(
@@ -242,7 +319,8 @@ def create_brain_unet_dataloaders(
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
-        pin_memory=torch.cuda.is_available()
+        pin_memory=torch.cuda.is_available(),
+        persistent_workers=num_workers > 0  # Keep workers alive between epochs
     )
     
     logger.info(

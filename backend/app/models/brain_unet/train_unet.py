@@ -36,7 +36,8 @@ class BrainUNetTrainer:
         device: str = 'cuda',
         learning_rate: float = 1e-4,
         checkpoint_dir: Optional[Path] = None,
-        visualize_every: int = 5
+        visualize_every: int = 5,
+        use_amp: bool = True
     ):
         self.model = model.to(device)
         self.train_loader = train_loader
@@ -45,6 +46,7 @@ class BrainUNetTrainer:
         self.checkpoint_dir = checkpoint_dir or Path("checkpoints/brain_unet")
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         self.visualize_every = visualize_every
+        self.use_amp = use_amp and device == 'cuda'
 
         self.optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
         
@@ -55,12 +57,15 @@ class BrainUNetTrainer:
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             self.optimizer, mode='max', factor=0.5, patience=5
         )
+        
+        # AMP scaler for mixed precision training
+        self.scaler = torch.cuda.amp.GradScaler() if self.use_amp else None
 
         self.best_dice = 0.0
 
         logger.info(
             f"BrainUNet trainer initialized: lr={learning_rate}, device={device}, "
-            f"loss=DiceBCE, scheduler=ReduceLROnPlateau",
+            f"loss=DiceBCE, scheduler=ReduceLROnPlateau, use_amp={self.use_amp}",
             extra={'image_id': None, 'path': str(self.checkpoint_dir), 'stage': 'train_init'}
         )
 
@@ -69,53 +74,63 @@ class BrainUNetTrainer:
         self.model.train()
         total_loss = 0.0
         total_dice = 0.0
-        total_iou = 0.0
-        total_acc = 0.0
 
         pbar = tqdm(self.train_loader, desc=f"Epoch {epoch} [Train]")
         for batch_idx, (images, masks) in enumerate(pbar):
-            images = images.to(self.device)
-            masks = masks.to(self.device)
+            images = images.to(self.device, non_blocking=True)
+            masks = masks.to(self.device, non_blocking=True)
 
-            # Forward
+            # Forward with AMP
             self.optimizer.zero_grad()
-            outputs = self.model(images)
-            loss = self.criterion(outputs, masks)
-
-            # Backward
-            loss.backward()
             
-            # Gradient clipping
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-            
-            self.optimizer.step()
+            if self.use_amp:
+                with torch.cuda.amp.autocast():
+                    outputs = self.model(images)
+                    loss = self.criterion(outputs, masks)
+                
+                # Backward with gradient scaling
+                self.scaler.scale(loss).backward()
+                
+                # Gradient clipping
+                self.scaler.unscale_(self.optimizer)
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                
+                # Optimizer step with scaler
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
+            else:
+                outputs = self.model(images)
+                loss = self.criterion(outputs, masks)
+                
+                # Backward
+                loss.backward()
+                
+                # Gradient clipping
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                
+                self.optimizer.step()
 
-            # Calculate metrics
+            # Calculate metrics (keep on GPU, no numpy conversion)
             with torch.no_grad():
                 preds = (torch.sigmoid(outputs) > 0.5).float()
-                acc = pixel_accuracy(preds, masks)
-                dice = dice_coefficient(preds.cpu().numpy(), masks.cpu().numpy())
-                iou = calculate_iou(preds.cpu().numpy(), masks.cpu().numpy())
+                # Fast Dice calculation on GPU
+                intersection = (preds * masks).sum()
+                dice = (2.0 * intersection) / (preds.sum() + masks.sum() + 1e-8)
+                dice = dice.item()
 
             total_loss += loss.item()
             total_dice += dice
-            total_iou += iou
-            total_acc += acc
 
-            # Update progress bar
+            # Update progress bar (reduced info to speed up display)
             pbar.set_postfix({
                 'loss': f'{loss.item():.4f}',
-                'dice': f'{dice:.4f}',
-                'iou': f'{iou:.4f}',
-                'acc': f'{acc:.4f}'
+                'dice': f'{dice:.4f}'
             })
 
         avg_loss = total_loss / len(self.train_loader)
         avg_dice = total_dice / len(self.train_loader)
-        avg_iou = total_iou / len(self.train_loader)
-        avg_acc = total_acc / len(self.train_loader)
 
-        return avg_loss, avg_dice, avg_iou, avg_acc
+        return avg_loss, avg_dice, 0.0, 0.0  # Return dummy values for iou, acc
 
     def validate(self, epoch: int) -> tuple:
         """Validate the model."""
@@ -133,18 +148,34 @@ class BrainUNetTrainer:
         with torch.no_grad():
             pbar = tqdm(self.val_loader, desc=f"Epoch {epoch} [Val]")
             for batch_idx, (images, masks) in enumerate(pbar):
-                images = images.to(self.device)
-                masks = masks.to(self.device)
+                images = images.to(self.device, non_blocking=True)
+                masks = masks.to(self.device, non_blocking=True)
 
-                # Forward
-                outputs = self.model(images)
-                loss = self.criterion(outputs, masks)
+                # Forward with AMP
+                if self.use_amp:
+                    with torch.cuda.amp.autocast():
+                        outputs = self.model(images)
+                        loss = self.criterion(outputs, masks)
+                else:
+                    outputs = self.model(images)
+                    loss = self.criterion(outputs, masks)
 
-                # Calculate metrics
+                # Calculate metrics (keep on GPU when possible)
                 preds = (torch.sigmoid(outputs) > 0.5).float()
-                acc = pixel_accuracy(preds, masks)
-                dice = dice_coefficient(preds.cpu().numpy(), masks.cpu().numpy())
-                iou = calculate_iou(preds.cpu().numpy(), masks.cpu().numpy())
+                
+                # Fast GPU-based metrics
+                correct = (preds == masks).sum().item()
+                total = masks.numel()
+                acc = correct / total if total > 0 else 0.0
+                
+                intersection = (preds * masks).sum()
+                dice = (2.0 * intersection) / (preds.sum() + masks.sum() + 1e-8)
+                dice = dice.item()
+                
+                # IoU calculation on GPU
+                intersection_iou = (preds * masks).sum().item()
+                union = (preds + masks).clamp(0, 1).sum().item()
+                iou = intersection_iou / union if union > 0 else 0.0
 
                 total_loss += loss.item()
                 total_dice += dice

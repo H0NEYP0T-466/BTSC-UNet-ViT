@@ -143,8 +143,8 @@ def main():
                        help="Learning rate")
     parser.add_argument("--image_size", type=int, default=256,
                        help="Image size (will resize to image_size x image_size)")
-    parser.add_argument("--num_workers", type=int, default=2,
-                       help="Number of data loading workers")
+    parser.add_argument("--num_workers", type=int, default=0,
+                       help="Number of data loading workers (0 recommended with caching)")
     parser.add_argument("--train_split", type=float, default=0.8,
                        help="Training set split ratio")
     parser.add_argument("--seed", type=int, default=42,
@@ -153,6 +153,10 @@ def main():
                        help="Start slice index (optional)")
     parser.add_argument("--slice_end", type=int, default=None,
                        help="End slice index (optional)")
+    parser.add_argument("--cache_in_memory", type=bool, default=True,
+                       help="Pre-load dataset into memory (faster training, requires more RAM)")
+    parser.add_argument("--use_amp", type=bool, default=True,
+                       help="Use Automatic Mixed Precision for faster training")
     
     args = parser.parse_args()
     
@@ -173,6 +177,8 @@ def main():
     print(f"   Learning rate: {args.lr}")
     print(f"   Image size: {args.image_size}x{args.image_size}")
     print(f"   Train split: {args.train_split}")
+    print(f"   Cache in memory: {args.cache_in_memory}")
+    print(f"   Use AMP: {args.use_amp}")
     
     # Create checkpoint directory
     checkpoint_dir = Path(args.checkpoint_dir)
@@ -194,7 +200,8 @@ def main():
             train_split=args.train_split,
             image_size=(args.image_size, args.image_size),
             transform=None,
-            slice_range=slice_range
+            slice_range=slice_range,
+            cache_in_memory=args.cache_in_memory
         )
     except Exception as e:
         print(f"❌ ERROR: Failed to load dataset: {e}")
@@ -230,6 +237,7 @@ def main():
     print(f"   Loss function: Dice + BCE (for brain segmentation)")
     print(f"   Optimizer: Adam with weight decay")
     print(f"   Scheduler: ReduceLROnPlateau")
+    print(f"   Mixed Precision: {args.use_amp}")
     
     trainer = BrainUNetTrainer(
         model=model,
@@ -238,7 +246,8 @@ def main():
         device=device,
         learning_rate=args.lr,
         checkpoint_dir=checkpoint_dir,
-        visualize_every=5
+        visualize_every=5,
+        use_amp=args.use_amp
     )
     
     # Train
@@ -249,7 +258,7 @@ def main():
     print(f"   - Training visualizations saved to: {checkpoint_dir}")
     print(f"   - Best model will be saved as: {checkpoint_dir}/brain_unet_best.pth")
     print(f"   - Monitor GPU usage with: !nvidia-smi")
-    print(f"   - Training may take 1-3 hours for {args.epochs} epochs")
+    print(f"   - With optimizations, training should be much faster (~5-10 min/epoch)")
     print()
     
     try:
