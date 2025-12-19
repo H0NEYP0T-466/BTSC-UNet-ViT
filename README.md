@@ -17,6 +17,16 @@ Full-stack application for automated brain tumor analysis in MRI images:
 
 ## ✨ New Features
 
+### Advanced Brain Segmentation Preprocessing (NEW!)
+- **Domain shift mitigation** - Harmonizes external data to NFBS training characteristics
+- **N4 bias field correction** - Corrects intensity non-uniformity using SimpleITK
+- **Multiple brain extraction methods** - Otsu, Yen, Li, Triangle thresholding with comparison
+- **Histogram matching** - Aligns intensity distributions to NFBS reference
+- **Training stabilization** - Early stopping, TensorBoard logging, stronger augmentation
+- **Preprocessing visualization** - UI panel shows all stages and candidate masks
+
+See [BRAIN_PREPROCESSING_GUIDE.md](BRAIN_PREPROCESSING_GUIDE.md) for comprehensive documentation.
+
 ### Pretrained UNet Model (Recommended)
 - **No training required** - Ready to use immediately
 - **Tumor-only segmentation** - Precisely segments tumor regions, not the whole brain
