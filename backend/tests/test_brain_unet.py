@@ -75,21 +75,34 @@ def test_nfbs_dataset():
     try:
         from app.models.brain_unet.datamodule import NFBSDataset
         
-        # Create dataset
-        dataset = NFBSDataset(
+        # Test without caching
+        print("\n   Testing dataset WITHOUT caching...")
+        dataset_no_cache = NFBSDataset(
             root_dir=dataset_path,
             image_size=(256, 256),
-            slice_range=(50, 100)  # Use limited range for testing
+            slice_range=(50, 60),  # Use very limited range for testing
+            cache_in_memory=False
         )
         
-        print(f"✅ Dataset loaded successfully")
-        print(f"   Total samples: {len(dataset)}")
+        print(f"   ✅ Dataset loaded (no cache): {len(dataset_no_cache)} samples")
         
-        if len(dataset) > 0:
+        # Test with caching
+        print("\n   Testing dataset WITH caching...")
+        dataset_cached = NFBSDataset(
+            root_dir=dataset_path,
+            image_size=(256, 256),
+            slice_range=(50, 60),  # Use very limited range for testing
+            cache_in_memory=True
+        )
+        
+        print(f"   ✅ Dataset loaded (cached): {len(dataset_cached)} samples")
+        print(f"   ✅ Cache size: {len(dataset_cached.cache)} slices")
+        
+        if len(dataset_cached) > 0:
             # Test getting a sample
-            image, mask = dataset[0]
+            image, mask = dataset_cached[0]
             
-            print(f"✅ Sample loaded successfully")
+            print(f"\n✅ Sample loaded successfully")
             print(f"   Image shape: {image.shape}")
             print(f"   Image dtype: {image.dtype}")
             print(f"   Image range: [{image.min():.3f}, {image.max():.3f}]")
