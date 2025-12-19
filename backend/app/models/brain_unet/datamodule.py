@@ -194,7 +194,7 @@ class NFBSDataset(Dataset):
                         self.cache[idx] = (image_slice, mask_slice)
                         pbar.update(1)
                         
-                except Exception as e:
+                except (FileNotFoundError, ValueError, OSError) as e:
                     logger.error(
                         f"Error preloading {subject_path.name}: {e}",
                         extra={'image_id': None, 'path': str(subject_path), 'stage': 'dataset_preload'}

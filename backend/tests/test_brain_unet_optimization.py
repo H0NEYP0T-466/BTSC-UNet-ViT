@@ -23,6 +23,7 @@ def test_preload_optimization():
     
     try:
         # Verify the optimization logic by reading the source file
+        # Path is relative to test location (backend/tests -> backend/app/models/brain_unet)
         datamodule_path = backend_path / "app" / "models" / "brain_unet" / "datamodule.py"
         
         if not datamodule_path.exists():
@@ -136,7 +137,9 @@ def estimate_speedup():
     
     # Estimate actual time improvement
     old_time_per_slice = 1 / 1.77  # From problem statement: 1.77 it/s
-    estimated_new_time_per_slice = old_time_per_slice / min(speedup_total, 20)  # Conservative estimate
+    # Use conservative estimate capped at 20x to account for other bottlenecks
+    # (memory bandwidth, CPU processing, progress bar overhead, etc.)
+    estimated_new_time_per_slice = old_time_per_slice / min(speedup_total, 20)
     estimated_new_rate = 1 / estimated_new_time_per_slice
     
     print(f"\nEstimated performance:")
