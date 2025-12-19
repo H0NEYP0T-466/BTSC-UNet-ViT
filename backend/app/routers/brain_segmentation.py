@@ -22,7 +22,8 @@ async def segment_brain(file: UploadFile = File(...)):
     """
     Segment brain tissue from uploaded MRI image using Brain UNet.
     
-    Returns brain mask, brain-extracted image, and overlay visualization.
+    Returns brain mask, brain-extracted image, overlay visualization,
+    and optionally preprocessing stages and candidate masks.
     """
     start_time = time.time()
     
@@ -47,28 +48,48 @@ async def segment_brain(file: UploadFile = File(...)):
             'stage': 'brain_segment'
         })
         
-        # Preprocess first
+        # Preprocess first (original preprocessing pipeline)
         preprocessed = preprocess_pipeline(image, image_id=image_id)
         normalized = preprocessed['normalized']
         
-        logger.info("Passing preprocessed image to Brain UNet", extra={
+        logger.info("Passing preprocessed image to Brain UNet with advanced preprocessing", extra={
             'image_id': image_id,
             'path': None,
             'stage': 'brain_segment'
         })
         
-        # Segment brain using Brain UNet model
+        # Segment brain using Brain UNet model with advanced preprocessing
         brain_unet = get_brain_unet_inference()
         
-        brain_segmentation = brain_unet.segment_brain(normalized, image_id=image_id)
+        brain_segmentation = brain_unet.segment_brain(
+            normalized, 
+            image_id=image_id,
+            save_intermediates=True
+        )
         
         # Calculate mask statistics
         brain_area_pct = (np.sum(brain_segmentation['mask'] > 0) / brain_segmentation['mask'].size) * 100
         
-        # Save artifacts
+        # Save main artifacts
         mask_url = storage.save_artifact(brain_segmentation['mask'], image_id, 'brain_mask')
         overlay_url = storage.save_artifact(brain_segmentation['overlay'], image_id, 'brain_overlay')
         brain_extracted_url = storage.save_artifact(brain_segmentation['brain_extracted'], image_id, 'brain_extracted')
+        
+        # Save preprocessing stages if available
+        preprocessing_stages_urls = None
+        if 'preprocessing' in brain_segmentation:
+            preprocessing_stages_urls = {}
+            for stage_name, stage_img in brain_segmentation['preprocessing'].items():
+                stage_url = storage.save_artifact(stage_img, image_id, f'preproc_{stage_name}')
+                preprocessing_stages_urls[stage_name] = storage.get_artifact_url(stage_url)
+        
+        # Save candidate masks if available
+        candidate_masks_urls = None
+        if 'candidates' in brain_segmentation:
+            candidate_masks_urls = {}
+            for mask_name, mask_img in brain_segmentation['candidates'].items():
+                mask_url_candidate = storage.save_artifact(mask_img, image_id, f'candidate_{mask_name}')
+                candidate_masks_urls[mask_name] = storage.get_artifact_url(mask_url_candidate)
         
         duration = time.time() - start_time
         
@@ -87,6 +108,8 @@ async def segment_brain(file: UploadFile = File(...)):
             overlay_url=storage.get_artifact_url(overlay_url),
             brain_extracted_url=storage.get_artifact_url(brain_extracted_url),
             brain_area_pct=float(brain_area_pct),
+            preprocessing_stages=preprocessing_stages_urls,
+            candidate_masks=candidate_masks_urls,
             log_context=LogContext(
                 image_id=image_id,
                 duration=duration,
