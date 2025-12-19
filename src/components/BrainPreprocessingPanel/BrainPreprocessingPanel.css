@@ -1,0 +1,194 @@
+.brain-preprocessing-panel {
+  margin: 2rem 0;
+}
+
+.panel-title {
+  font-size: 1.75rem;
+  margin-bottom: 0.5rem;
+  color: #00C2FF;
+}
+
+.panel-description {
+  color: #999;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.preprocessing-section {
+  margin-bottom: 2.5rem;
+}
+
+.section-title {
+  font-size: 1.25rem;
+  margin-bottom: 0.75rem;
+  color: #fff;
+  border-bottom: 2px solid #00C2FF;
+  padding-bottom: 0.5rem;
+}
+
+.section-description {
+  color: #999;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Preprocessing Stages Grid */
+.stages-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.stage-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem;
+  background: #1a1a1a;
+  border-radius: 8px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stage-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 194, 255, 0.2);
+}
+
+.stage-image {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.stage-name {
+  font-size: 0.85rem;
+  color: #ccc;
+  text-align: center;
+  margin: 0;
+}
+
+/* Candidate Masks Grid */
+.candidates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1.5rem;
+}
+
+.candidate-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  background: #1a1a1a;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  transition: border-color 0.2s, transform 0.2s;
+  position: relative;
+}
+
+.candidate-item:hover {
+  border-color: #00C2FF;
+  transform: translateY(-4px);
+}
+
+.candidate-image {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+}
+
+.candidate-name {
+  font-size: 1rem;
+  color: #fff;
+  text-align: center;
+  margin: 0.5rem 0;
+  font-weight: 600;
+}
+
+.candidate-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.candidate-item:has(.candidate-badge:contains("Primary")) .candidate-badge,
+.candidate-badge {
+  background: #00C2FF;
+  color: #111;
+}
+
+.candidate-item:nth-child(n+2) .candidate-badge {
+  background: #555;
+  color: #fff;
+}
+
+/* Final Results Grid */
+.final-results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.result-item-img {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  background: #1a1a1a;
+  border-radius: 8px;
+  border: 2px solid #00C2FF;
+}
+
+.result-image {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+}
+
+.result-name {
+  font-size: 1rem;
+  color: #00C2FF;
+  text-align: center;
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .stages-grid {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .stage-image {
+    height: 100px;
+  }
+
+  .candidates-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+  }
+
+  .candidate-image {
+    height: 120px;
+  }
+
+  .final-results-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .result-image {
+    height: 200px;
+  }
+}
