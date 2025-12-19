@@ -117,17 +117,14 @@
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
-}
-
-.candidate-item:has(.candidate-badge:contains("Primary")) .candidate-badge,
-.candidate-badge {
-  background: #00C2FF;
-  color: #111;
-}
-
-.candidate-item:nth-child(n+2) .candidate-badge {
   background: #555;
   color: #fff;
+}
+
+/* Primary badge styling for first candidate (Otsu) */
+.candidate-item:first-child .candidate-badge {
+  background: #00C2FF;
+  color: #111;
 }
 
 /* Final Results Grid */

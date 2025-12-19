@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import List
 import numpy as np
 import cv2
+import nibabel as nib
 from tqdm import tqdm
 
 
@@ -70,7 +71,6 @@ def load_nfbs_images(nfbs_path: str, max_images: int = 50, extensions: List[str]
         try:
             if img_path.suffix in ['.nii', '.gz']:
                 # Load NIfTI
-                import nibabel as nib
                 nii = nib.load(str(img_path))
                 img_data = nii.get_fdata()
                 
