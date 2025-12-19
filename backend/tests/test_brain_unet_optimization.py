@@ -105,6 +105,10 @@ def estimate_speedup():
     total_slices = 19125
     slices_per_subject = total_slices / num_subjects
     
+    # Conservative speedup cap to account for non-I/O bottlenecks
+    # (memory bandwidth, CPU processing, progress bar overhead, etc.)
+    MAX_PRACTICAL_SPEEDUP = 20
+    
     print(f"\nDataset characteristics:")
     print(f"   Total subjects: {num_subjects}")
     print(f"   Total slices: {total_slices}")
@@ -139,9 +143,7 @@ def estimate_speedup():
     
     # Estimate actual time improvement
     old_time_per_slice = 1 / 1.77  # From problem statement: 1.77 it/s
-    # Use conservative estimate capped at 20x to account for other bottlenecks
-    # (memory bandwidth, CPU processing, progress bar overhead, etc.)
-    estimated_new_time_per_slice = old_time_per_slice / min(speedup_total, 20)
+    estimated_new_time_per_slice = old_time_per_slice / min(speedup_total, MAX_PRACTICAL_SPEEDUP)
     estimated_new_rate = 1 / estimated_new_time_per_slice
     
     print(f"\nEstimated performance:")

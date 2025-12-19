@@ -166,6 +166,13 @@ class NFBSDataset(Dataset):
                     t1_files = list(subject_path.glob("*_T1w.nii.gz"))
                     mask_files = list(subject_path.glob("*_brainmask.nii.gz"))
                     
+                    # Validate that exactly one file of each type is found
+                    if len(t1_files) != 1 or len(mask_files) != 1:
+                        raise ValueError(
+                            f"Expected 1 T1w file and 1 mask file, found "
+                            f"{len(t1_files)} T1w and {len(mask_files)} mask files"
+                        )
+                    
                     # Load 3D volumes (once per subject)
                     t1_img = nib.load(t1_files[0])
                     mask_img = nib.load(mask_files[0])
