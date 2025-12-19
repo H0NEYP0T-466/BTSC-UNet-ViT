@@ -52,7 +52,9 @@ def test_preload_optimization():
             print(f"   - Has optimized loop: {has_optimized_loop}")
         
         # Test 2: Verify error handling
-        has_error_handling = 'try:' in source and 'except Exception as e:' in source
+        has_error_handling = ('try:' in source and 
+                             ('except (FileNotFoundError, ValueError, OSError) as e:' in source or
+                              'except Exception as e:' in source))
         has_progress_update = 'pbar.update' in source
         
         if has_error_handling and has_progress_update:

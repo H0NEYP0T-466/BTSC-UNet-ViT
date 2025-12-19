@@ -193,7 +193,11 @@ class NFBSDataset(Dataset):
                         # Store in cache
                         self.cache[idx] = (image_slice, mask_slice)
                         pbar.update(1)
-                        
+                
+                # Catch expected errors during file loading and processing
+                # - FileNotFoundError: missing NIfTI files
+                # - OSError: corrupted files or I/O issues
+                # - ValueError: invalid data (e.g., empty arrays from nibabel)
                 except (FileNotFoundError, ValueError, OSError) as e:
                     logger.error(
                         f"Error preloading {subject_path.name}: {e}",
