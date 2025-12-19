@@ -70,7 +70,7 @@ class BrainUNetTrainer:
         )
 
     def train_epoch(self, epoch: int) -> tuple:
-        """Train for one epoch."""
+        """Train for one epoch. Returns (loss, dice, iou, acc)."""
         self.model.train()
         total_loss = 0.0
         total_dice = 0.0
@@ -130,7 +130,9 @@ class BrainUNetTrainer:
         avg_loss = total_loss / len(self.train_loader)
         avg_dice = total_dice / len(self.train_loader)
 
-        return avg_loss, avg_dice, 0.0, 0.0  # Return dummy values for iou, acc
+        # Return 0.0 for iou and acc since we don't calculate them in training for speed
+        # Full metrics are calculated in validation
+        return avg_loss, avg_dice, 0.0, 0.0
 
     def validate(self, epoch: int) -> tuple:
         """Validate the model."""
@@ -163,19 +165,22 @@ class BrainUNetTrainer:
                 # Calculate metrics (keep on GPU when possible)
                 preds = (torch.sigmoid(outputs) > 0.5).float()
                 
-                # Fast GPU-based metrics
-                correct = (preds == masks).sum().item()
-                total = masks.numel()
-                acc = correct / total if total > 0 else 0.0
-                
+                # Fast GPU-based metrics - minimize CPU transfers
                 intersection = (preds * masks).sum()
                 dice = (2.0 * intersection) / (preds.sum() + masks.sum() + 1e-8)
-                dice = dice.item()
                 
                 # IoU calculation on GPU
-                intersection_iou = (preds * masks).sum().item()
-                union = (preds + masks).clamp(0, 1).sum().item()
-                iou = intersection_iou / union if union > 0 else 0.0
+                intersection_iou = (preds * masks).sum()
+                union = (preds + masks).clamp(0, 1).sum()
+                iou = intersection_iou / (union + 1e-8)
+                
+                # Accuracy on GPU
+                acc = (preds == masks).float().mean()
+                
+                # Single transfer to CPU for all metrics
+                dice = dice.item()
+                iou = iou.item()
+                acc = acc.item()
 
                 total_loss += loss.item()
                 total_dice += dice

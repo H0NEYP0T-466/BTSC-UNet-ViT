@@ -153,10 +153,11 @@ def main():
                        help="Start slice index (optional)")
     parser.add_argument("--slice_end", type=int, default=None,
                        help="End slice index (optional)")
-    parser.add_argument("--cache_in_memory", type=bool, default=True,
-                       help="Pre-load dataset into memory (faster training, requires more RAM)")
-    parser.add_argument("--use_amp", type=bool, default=True,
-                       help="Use Automatic Mixed Precision for faster training")
+    parser.add_argument("--no-cache", dest='cache_in_memory', action='store_false',
+                       help="Disable in-memory caching (slower but uses less RAM)")
+    parser.add_argument("--no-amp", dest='use_amp', action='store_false',
+                       help="Disable Automatic Mixed Precision (slower)")
+    parser.set_defaults(cache_in_memory=True, use_amp=True)
     
     args = parser.parse_args()
     

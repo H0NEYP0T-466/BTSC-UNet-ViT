@@ -191,6 +191,8 @@ class NFBSDataset(Dataset):
         if self.cache_in_memory and idx in self.cache:
             image_slice, mask_slice = self.cache[idx]
             # Make copies to avoid modifying cached data
+            # (necessary if transforms modify in-place)
+            # Copy overhead is negligible compared to avoided disk I/O
             image_slice = image_slice.copy()
             mask_slice = mask_slice.copy()
         else:
@@ -272,11 +274,14 @@ def create_brain_unet_dataloaders(
         'image_id': None, 'path': str(root_dir), 'stage': 'dataloader_init'
     })
     
-    # When caching in memory, use num_workers=0 to avoid multiprocessing overhead
+    # When caching in memory, num_workers=0 is optimal to avoid multiprocessing overhead
+    original_num_workers = num_workers
     if cache_in_memory and num_workers > 0:
-        logger.info("Setting num_workers=0 because cache_in_memory=True", extra={
-            'image_id': None, 'path': str(root_dir), 'stage': 'dataloader_init'
-        })
+        logger.warning(
+            f"Setting num_workers=0 (was {num_workers}) because cache_in_memory=True. "
+            "Multiprocessing overhead is unnecessary when data is cached in memory.",
+            extra={'image_id': None, 'path': str(root_dir), 'stage': 'dataloader_init'}
+        )
         num_workers = 0
     
     # Create full dataset
