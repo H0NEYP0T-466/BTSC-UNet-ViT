@@ -9,14 +9,14 @@ interface PredictionCardProps {
 
 const CLASS_DISPLAY_NAMES: { [key: string]: string } = {
   'no_tumor': 'No Tumor',
-  'giloma': 'Glioma',
+  'glioma': 'Glioma',
   'meningioma': 'Meningioma',
   'pituitary': 'Pituitary Tumor',
 };
 
 const CLASS_COLORS: { [key: string]: string } = {
   'no_tumor': '#10b981',
-  'giloma': '#ef4444',
+  'glioma': '#ef4444',
   'meningioma': '#f59e0b',
   'pituitary': '#3b82f6',
 };
@@ -24,7 +24,7 @@ const CLASS_COLORS: { [key: string]: string } = {
 export function PredictionCard({ className, confidence, probabilities, logits }: PredictionCardProps) {
   const displayName = CLASS_DISPLAY_NAMES[className] || className;
   const color = CLASS_COLORS[className] || 'var(--accent)';
-  const classNames = ['no_tumor', 'giloma', 'meningioma', 'pituitary'];
+  const classNames = ['no_tumor', 'glioma', 'meningioma', 'pituitary'];
 
   return (
     <div className="prediction-card card">
