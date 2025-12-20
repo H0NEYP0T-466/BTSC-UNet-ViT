@@ -146,11 +146,37 @@ class PipelineService:
         # Save brain segmentation artifacts (only numpy arrays, skip nested dicts)
         brain_segment_urls = {}
         for seg_type, seg_image in brain_segmentation_results.items():
-            # Skip nested dictionaries (e.g., 'preprocessing', 'candidates')
-            if isinstance(seg_image, dict):
+            # Skip nested dictionaries (e.g., 'preprocessing', 'candidates'), booleans, and None values
+            if isinstance(seg_image, (dict, bool, type(None), str)):
                 continue
             url = self.storage.save_artifact(seg_image, image_id, f"brain_{seg_type}")
             brain_segment_urls[seg_type] = self.storage.get_artifact_url(url)
+        
+        # Save preprocessing stages if available
+        brain_preprocessing_stages_urls = None
+        if 'preprocessing' in brain_segmentation_results and brain_segmentation_results['preprocessing']:
+            brain_preprocessing_stages_urls = {}
+            for stage_name, stage_img in brain_segmentation_results['preprocessing'].items():
+                if stage_img is not None and isinstance(stage_img, np.ndarray):
+                    stage_url = self.storage.save_artifact(stage_img, image_id, f'brain_preproc_{stage_name}')
+                    brain_preprocessing_stages_urls[stage_name] = self.storage.get_artifact_url(stage_url)
+        
+        # Save candidate masks if available
+        brain_candidate_masks_urls = None
+        if 'candidates' in brain_segmentation_results and brain_segmentation_results['candidates']:
+            brain_candidate_masks_urls = {}
+            for mask_name, mask_img in brain_segmentation_results['candidates'].items():
+                if mask_img is not None and isinstance(mask_img, np.ndarray):
+                    mask_url_candidate = self.storage.save_artifact(mask_img, image_id, f'brain_candidate_{mask_name}')
+                    brain_candidate_masks_urls[mask_name] = self.storage.get_artifact_url(mask_url_candidate)
+        
+        # Add fallback info to brain segmentation URLs
+        brain_segment_urls['used_fallback'] = brain_segmentation_results.get('used_fallback', False)
+        brain_segment_urls['fallback_method'] = brain_segmentation_results.get('fallback_method')
+        if brain_preprocessing_stages_urls:
+            brain_segment_urls['preprocessing_stages'] = brain_preprocessing_stages_urls
+        if brain_candidate_masks_urls:
+            brain_segment_urls['candidate_masks'] = brain_candidate_masks_urls
         
         logger.info("Brain segmentation completed, passing to next layer: Tumor UNet", extra={
             'image_id': image_id,

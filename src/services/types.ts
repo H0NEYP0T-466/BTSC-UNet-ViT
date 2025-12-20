@@ -60,6 +60,9 @@ export interface InferenceResponse {
     candidate_masks?: {
       [key: string]: string;
     };
+    // Fallback fields
+    used_fallback?: boolean;
+    fallback_method?: string;
   };
   tumor_segmentation: {
     mask: string;

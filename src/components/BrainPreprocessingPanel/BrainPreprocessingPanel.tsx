@@ -10,6 +10,8 @@ export interface BrainPreprocessingPanelProps {
   finalMask?: string;
   overlay?: string;
   cropped?: string;
+  usedFallback?: boolean;
+  fallbackMethod?: string;
 }
 
 export function BrainPreprocessingPanel({
@@ -17,7 +19,9 @@ export function BrainPreprocessingPanel({
   candidateMasks,
   finalMask,
   overlay,
-  cropped
+  cropped,
+  usedFallback,
+  fallbackMethod
 }: BrainPreprocessingPanelProps) {
   // If no preprocessing data, don't show the panel
   if (!stages && !candidateMasks) {
@@ -31,6 +35,16 @@ export function BrainPreprocessingPanel({
         Advanced preprocessing pipeline harmonizes external data to NFBS characteristics
         for improved brain segmentation accuracy.
       </p>
+      
+      {/* Fallback indicator */}
+      {usedFallback && fallbackMethod && (
+        <div className="fallback-indicator warning-banner">
+          <span className="warning-icon">⚠️</span>
+          <span className="warning-text">
+            Brain UNet produced empty mask. Using fallback method: <strong>{fallbackMethod.toUpperCase()}</strong>
+          </span>
+        </div>
+      )}
 
       {/* Preprocessing Stages */}
       {stages && Object.keys(stages).length > 0 && (
@@ -56,7 +70,9 @@ export function BrainPreprocessingPanel({
         <div className="preprocessing-section">
           <h4 className="section-title">Brain Extraction Methods</h4>
           <p className="section-description">
-            Multiple thresholding methods for comparison. The primary method (Otsu) is used for final segmentation.
+            Multiple thresholding methods for comparison. {usedFallback 
+              ? `Fallback method (${fallbackMethod?.toUpperCase()}) was used.`
+              : 'The primary method (Otsu) is used for final segmentation.'}
           </p>
           <div className="candidates-grid">
             {Object.entries(candidateMasks).map(([name, url]) => (
@@ -67,8 +83,12 @@ export function BrainPreprocessingPanel({
                   className="candidate-image"
                 />
                 <p className="candidate-name">{name.toUpperCase()}</p>
-                <span className="candidate-badge">
-                  {name === 'otsu' ? 'Primary' : 'Alternative'}
+                <span className={`candidate-badge ${usedFallback && name === fallbackMethod ? 'fallback-badge' : ''}`}>
+                  {usedFallback && name === fallbackMethod 
+                    ? '✓ Used (Fallback)' 
+                    : name === 'otsu' 
+                      ? 'Primary' 
+                      : 'Alternative'}
                 </span>
               </div>
             ))}
