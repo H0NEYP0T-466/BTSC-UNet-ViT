@@ -113,9 +113,12 @@ class PipelineService:
             image_id=image_id
         )
         
-        # Save preprocessing artifacts
+        # Save preprocessing artifacts (only numpy arrays, skip nested dicts)
         preprocess_urls = {}
         for stage_name, stage_image in preprocessed.items():
+            # Skip nested dictionaries for defensive programming
+            if isinstance(stage_image, dict):
+                continue
             url = self.storage.save_artifact(stage_image, image_id, stage_name)
             preprocess_urls[stage_name] = self.storage.get_artifact_url(url)
         
@@ -140,9 +143,12 @@ class PipelineService:
             image_id=image_id
         )
         
-        # Save brain segmentation artifacts
+        # Save brain segmentation artifacts (only numpy arrays, skip nested dicts)
         brain_segment_urls = {}
         for seg_type, seg_image in brain_segmentation_results.items():
+            # Skip nested dictionaries (e.g., 'preprocessing', 'candidates')
+            if isinstance(seg_image, dict):
+                continue
             url = self.storage.save_artifact(seg_image, image_id, f"brain_{seg_type}")
             brain_segment_urls[seg_type] = self.storage.get_artifact_url(url)
         
@@ -165,9 +171,12 @@ class PipelineService:
             image_id=image_id
         )
         
-        # Save tumor segmentation artifacts
+        # Save tumor segmentation artifacts (only numpy arrays, skip nested dicts)
         tumor_segment_urls = {}
         for seg_type, seg_image in tumor_segmentation_results.items():
+            # Skip nested dictionaries for defensive programming
+            if isinstance(seg_image, dict):
+                continue
             url = self.storage.save_artifact(seg_image, image_id, f"tumor_{seg_type}")
             tumor_segment_urls[seg_type] = self.storage.get_artifact_url(url)
         
