@@ -8,11 +8,13 @@ import numpy as np
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 
-# Add project root to path
+# Add project root and backend to path
 project_root = Path(__file__).resolve().parents[2]
+backend_path = project_root / 'backend'
+sys.path.insert(0, str(backend_path))
 sys.path.insert(0, str(project_root))
 
-from backend.app.models.brain_unet.infer_unet import BrainUNetInference
+from app.models.brain_unet.infer_unet import BrainUNetInference
 
 
 class TestBrainUNetFallback:
@@ -20,20 +22,21 @@ class TestBrainUNetFallback:
     
     def test_fallback_triggered_on_empty_mask(self):
         """Test that fallback is triggered when UNet produces near-empty mask."""
+        import torch
+        
         # Create a mock model that returns all zeros (empty mask)
         mock_model = MagicMock()
-        mock_output = MagicMock()
-        mock_output.squeeze.return_value.cpu.return_value.numpy.return_value = np.zeros((256, 256), dtype=np.float32)
-        mock_model.return_value = mock_output
+        # Return actual tensor instead of MagicMock
+        zeros_tensor = torch.zeros((1, 1, 256, 256), dtype=torch.float32)
+        mock_model.return_value = zeros_tensor
         
         # Create test image
         test_image = np.random.randint(0, 255, (256, 256), dtype=np.uint8)
         
         # Create inference instance with mocked model and enabled preprocessing
-        with patch('backend.app.models.brain_unet.infer_unet.get_brain_unet_model') as mock_get_model, \
-             patch('backend.app.models.brain_unet.infer_unet.apply_pipeline') as mock_apply_pipeline:
+        with patch('app.models.brain_unet.infer_unet.get_brain_unet_model') as mock_get_model, \
+             patch('app.models.brain_unet.infer_unet.apply_pipeline') as mock_apply_pipeline:
             
-            # Setup mocks
             mock_get_model.return_value = mock_model
             
             # Mock preprocessing result with candidate masks
@@ -72,20 +75,20 @@ class TestBrainUNetFallback:
     
     def test_no_fallback_on_valid_mask(self):
         """Test that fallback is NOT triggered when UNet produces valid mask."""
+        import torch
+        
         # Create a mock model that returns a valid mask (50% brain region)
         mock_model = MagicMock()
-        mock_output = MagicMock()
-        valid_mask = np.zeros((256, 256), dtype=np.float32)
-        valid_mask[64:192, 64:192] = 1.0  # 50% of image
-        mock_output.squeeze.return_value.cpu.return_value.numpy.return_value = valid_mask
-        mock_model.return_value = mock_output
+        valid_mask = torch.zeros((1, 1, 256, 256), dtype=torch.float32)
+        valid_mask[:, :, 64:192, 64:192] = 5.0  # High logit value for 50% of image
+        mock_model.return_value = valid_mask
         
         # Create test image
         test_image = np.random.randint(0, 255, (256, 256), dtype=np.uint8)
         
         # Create inference instance with mocked model
-        with patch('backend.app.models.brain_unet.infer_unet.get_brain_unet_model') as mock_get_model, \
-             patch('backend.app.models.brain_unet.infer_unet.apply_pipeline') as mock_apply_pipeline:
+        with patch('app.models.brain_unet.infer_unet.get_brain_unet_model') as mock_get_model, \
+             patch('app.models.brain_unet.infer_unet.apply_pipeline') as mock_apply_pipeline:
             
             # Setup mocks
             mock_get_model.return_value = mock_model
@@ -121,18 +124,19 @@ class TestBrainUNetFallback:
     
     def test_fallback_selects_best_candidate(self):
         """Test that fallback selects the candidate mask with largest area."""
+        import torch
+        
         # Create a mock model that returns all zeros
         mock_model = MagicMock()
-        mock_output = MagicMock()
-        mock_output.squeeze.return_value.cpu.return_value.numpy.return_value = np.zeros((256, 256), dtype=np.float32)
-        mock_model.return_value = mock_output
+        zeros_tensor = torch.zeros((1, 1, 256, 256), dtype=torch.float32)
+        mock_model.return_value = zeros_tensor
         
         # Create test image
         test_image = np.random.randint(0, 255, (256, 256), dtype=np.uint8)
         
         # Create inference instance with mocked model
-        with patch('backend.app.models.brain_unet.infer_unet.get_brain_unet_model') as mock_get_model, \
-             patch('backend.app.models.brain_unet.infer_unet.apply_pipeline') as mock_apply_pipeline:
+        with patch('app.models.brain_unet.infer_unet.get_brain_unet_model') as mock_get_model, \
+             patch('app.models.brain_unet.infer_unet.apply_pipeline') as mock_apply_pipeline:
             
             # Setup mocks
             mock_get_model.return_value = mock_model
