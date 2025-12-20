@@ -26,6 +26,31 @@ export function PredictionCard({ className, confidence, probabilities, logits }:
   const color = CLASS_COLORS[className] || 'var(--accent)';
   const classNames = ['no_tumor', 'glioma', 'meningioma', 'pituitary'];
 
+  // Defensive programming: ensure arrays have expected length
+  if (!Array.isArray(probabilities) || probabilities.length < 4) {
+    console.error('[PredictionCard] Invalid probabilities array:', probabilities);
+    return (
+      <div className="prediction-card card">
+        <h2 className="prediction-title">Classification Result</h2>
+        <p style={{ color: 'var(--error)', padding: '1rem', textAlign: 'center' }}>
+          Invalid classification data received
+        </p>
+      </div>
+    );
+  }
+
+  if (!Array.isArray(logits) || logits.length < 4) {
+    console.error('[PredictionCard] Invalid logits array:', logits);
+    return (
+      <div className="prediction-card card">
+        <h2 className="prediction-title">Classification Result</h2>
+        <p style={{ color: 'var(--error)', padding: '1rem', textAlign: 'center' }}>
+          Invalid classification data received
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="prediction-card card">
       <h2 className="prediction-title">Classification Result</h2>
