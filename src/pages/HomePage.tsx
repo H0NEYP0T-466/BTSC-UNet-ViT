@@ -90,7 +90,8 @@ export function HomePage() {
 
                 {/* Brain Preprocessing Panel - NEW */}
                 {(result.brain_segmentation.preprocessing_stages || 
-                  result.brain_segmentation.candidate_masks) && (
+                  result.brain_segmentation.candidate_masks ||
+                  result.brain_segmentation.candidate_overlays) && (
                   <div className="result-item">
                     <BrainPreprocessingPanel
                       stages={result.brain_segmentation.preprocessing_stages ? 
@@ -103,6 +104,13 @@ export function HomePage() {
                       candidateMasks={result.brain_segmentation.candidate_masks ?
                         Object.fromEntries(
                           Object.entries(result.brain_segmentation.candidate_masks).map(
+                            ([key, value]) => [key, apiClient.getResourceUrl(value as string)]
+                          )
+                        ) : undefined
+                      }
+                      candidateOverlays={result.brain_segmentation.candidate_overlays ?
+                        Object.fromEntries(
+                          Object.entries(result.brain_segmentation.candidate_overlays).map(
                             ([key, value]) => [key, apiClient.getResourceUrl(value as string)]
                           )
                         ) : undefined

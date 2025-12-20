@@ -7,6 +7,9 @@ export interface BrainPreprocessingPanelProps {
   candidateMasks?: {
     [key: string]: string;
   };
+  candidateOverlays?: {
+    [key: string]: string;
+  };
   finalMask?: string;
   overlay?: string;
   cropped?: string;
@@ -17,6 +20,7 @@ export interface BrainPreprocessingPanelProps {
 export function BrainPreprocessingPanel({
   stages,
   candidateMasks,
+  candidateOverlays,
   finalMask,
   overlay,
   cropped,
@@ -24,7 +28,7 @@ export function BrainPreprocessingPanel({
   fallbackMethod
 }: BrainPreprocessingPanelProps) {
   // If no preprocessing data, don't show the panel
-  if (!stages && !candidateMasks) {
+  if (!stages && !candidateMasks && !candidateOverlays) {
     return null;
   }
 
@@ -68,7 +72,7 @@ export function BrainPreprocessingPanel({
       {/* Candidate Masks */}
       {candidateMasks && Object.keys(candidateMasks).length > 0 && (
         <div className="preprocessing-section">
-          <h4 className="section-title">Brain Extraction Methods</h4>
+          <h4 className="section-title">Brain Extraction Methods - Binary Masks</h4>
           <p className="section-description">
             Multiple thresholding methods for comparison. {getCandidateDescription(usedFallback, fallbackMethod)}
           </p>
@@ -81,6 +85,35 @@ export function BrainPreprocessingPanel({
                   className="candidate-image"
                 />
                 <p className="candidate-name">{name.toUpperCase()}</p>
+                <span className={`candidate-badge ${usedFallback && name === fallbackMethod ? 'fallback-badge' : ''}`}>
+                  {usedFallback && name === fallbackMethod 
+                    ? '✓ Used (Fallback)' 
+                    : name === 'otsu' 
+                      ? 'Primary' 
+                      : 'Alternative'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Candidate Overlays - NEW SECTION */}
+      {candidateOverlays && Object.keys(candidateOverlays).length > 0 && (
+        <div className="preprocessing-section">
+          <h4 className="section-title">Brain Extraction Methods - Applied on Original Image</h4>
+          <p className="section-description">
+            Each algorithm's mask applied as an overlay on the original image for visual comparison.
+          </p>
+          <div className="candidates-grid">
+            {Object.entries(candidateOverlays).map(([name, url]) => (
+              <div key={name} className="candidate-item">
+                <img 
+                  src={url} 
+                  alt={`${name} overlay`}
+                  className="candidate-image"
+                />
+                <p className="candidate-name">{name.toUpperCase()} Overlay</p>
                 <span className={`candidate-badge ${usedFallback && name === fallbackMethod ? 'fallback-badge' : ''}`}>
                   {usedFallback && name === fallbackMethod 
                     ? '✓ Used (Fallback)' 

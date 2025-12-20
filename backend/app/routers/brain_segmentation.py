@@ -85,11 +85,19 @@ async def segment_brain(file: UploadFile = File(...)):
         
         # Save candidate masks if available
         candidate_masks_urls = None
-        if 'candidates' in brain_segmentation:
+        if 'candidates' in brain_segmentation and brain_segmentation['candidates']:
             candidate_masks_urls = {}
             for mask_name, mask_img in brain_segmentation['candidates'].items():
                 mask_url_candidate = storage.save_artifact(mask_img, image_id, f'candidate_{mask_name}')
                 candidate_masks_urls[mask_name] = storage.get_artifact_url(mask_url_candidate)
+        
+        # Save candidate mask overlays if available (shows each algorithm's mask applied on original image)
+        candidate_overlays_urls = None
+        if 'candidate_overlays' in brain_segmentation and brain_segmentation['candidate_overlays']:
+            candidate_overlays_urls = {}
+            for overlay_name, overlay_img in brain_segmentation['candidate_overlays'].items():
+                overlay_url_candidate = storage.save_artifact(overlay_img, image_id, f'candidate_overlay_{overlay_name}')
+                candidate_overlays_urls[overlay_name] = storage.get_artifact_url(overlay_url_candidate)
         
         duration = time.time() - start_time
         
@@ -110,6 +118,7 @@ async def segment_brain(file: UploadFile = File(...)):
             brain_area_pct=float(brain_area_pct),
             preprocessing_stages=preprocessing_stages_urls,
             candidate_masks=candidate_masks_urls,
+            candidate_overlays=candidate_overlays_urls,
             used_fallback=brain_segmentation.get('used_fallback', False),
             fallback_method=brain_segmentation.get('fallback_method'),
             log_context=LogContext(
