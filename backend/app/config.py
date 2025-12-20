@@ -42,7 +42,8 @@ class Settings(BaseSettings):
 
     # Dataset roots (adjusted for Colab local folder)
     DATASET_ROOT: Path = BASE_DIR / "UNet_Dataset"
-    SEGMENTED_DATASET_ROOT: Path = DATASET_ROOT / "Vit_Dataset"
+    VIT_DATASET_ROOT: Path = BASE_DIR / "dataset" / "Vit_Dataset"  # ViT classification dataset
+    SEGMENTED_DATASET_ROOT: Path = DATASET_ROOT / "Vit_Dataset"  # Legacy, kept for compatibility
     BRATS_ROOT: Path = DATASET_ROOT  # your UNet dataset folder
 
     # Model checkpoint directories
@@ -61,7 +62,7 @@ class Settings(BaseSettings):
     VIT_MODEL_NAME: str = "vit_base_patch16_224"
     VIT_NUM_CLASSES:  int = 4
     VIT_IMAGE_SIZE: int = 224
-    VIT_CLASS_NAMES: List[str] = ["no_tumor", "glioma", "meningioma", "pituitary"]
+    VIT_CLASS_NAMES: List[str] = ["notumor", "glioma", "meningioma", "pituitary"]
 
     # Training settings
     BATCH_SIZE: int = 16  # ✅ Increased from 8 to 16 for better GPU utilization (15GB GPU RAM)

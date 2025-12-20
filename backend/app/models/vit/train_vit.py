@@ -211,17 +211,17 @@ def main():
     })
     
     # Check if dataset exists
-    if not settings.SEGMENTED_DATASET_ROOT.exists():
+    if not settings.VIT_DATASET_ROOT.exists():
         logger.error(
-            f"Dataset not found at {settings.SEGMENTED_DATASET_ROOT}. "
+            f"Dataset not found at {settings.VIT_DATASET_ROOT}. "
             f"Please ensure the dataset is available.",
-            extra={'image_id': None, 'path': str(settings.SEGMENTED_DATASET_ROOT), 'stage': 'train_init'}
+            extra={'image_id': None, 'path': str(settings.VIT_DATASET_ROOT), 'stage': 'train_init'}
         )
-        raise FileNotFoundError(f"Dataset not found: {settings.SEGMENTED_DATASET_ROOT}")
+        raise FileNotFoundError(f"Dataset not found: {settings.VIT_DATASET_ROOT}")
     
-    logger.info(f"Loading dataset from {settings.SEGMENTED_DATASET_ROOT}", extra={
+    logger.info(f"Loading dataset from {settings.VIT_DATASET_ROOT}", extra={
         'image_id': None,
-        'path': str(settings.SEGMENTED_DATASET_ROOT),
+        'path': str(settings.VIT_DATASET_ROOT),
         'stage': 'train_init'
     })
     
@@ -230,7 +230,7 @@ def main():
     
     # Create dataloaders
     train_loader, val_loader = create_vit_dataloaders(
-        root_dir=settings.SEGMENTED_DATASET_ROOT,
+        root_dir=settings.VIT_DATASET_ROOT,
         batch_size=settings.BATCH_SIZE,
         num_workers=settings.NUM_WORKERS,
         train_split=0.8,

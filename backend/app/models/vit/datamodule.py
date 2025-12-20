@@ -162,7 +162,8 @@ def create_vit_dataloaders(
     Returns:
         Tuple of (train_loader, val_loader)
     """
-    root_dir = root_dir or settings.SEGMENTED_DATASET_ROOT
+    # Use VIT_DATASET_ROOT for direct classification dataset
+    root_dir = root_dir or settings.VIT_DATASET_ROOT
     
     logger.info(f"Creating ViT dataloaders from {root_dir}", extra={
         'image_id': None, 'path': str(root_dir), 'stage': 'dataloader_init'
