@@ -154,11 +154,18 @@ class BrainUNetInference:
         result = {
             'mask': None,
             'brain_extracted': None,
-            'overlay': None
+            'overlay': None,
+            'preprocessing': None,
+            'candidates': None,
+            'used_fallback': False,
+            'fallback_method': None
         }
         
         # Apply advanced preprocessing if enabled
-        if self.enable_advanced_preproc and self.preproc_config.get('enable', False):
+        # Always try to enable it to generate candidate masks for fallback
+        should_preprocess = self.enable_advanced_preproc and self.preproc_config.get('enable', False)
+        
+        if should_preprocess:
             logger.info("Applying advanced brain preprocessing pipeline", extra={
                 'image_id': image_id,
                 'path': None,
@@ -229,26 +236,74 @@ class BrainUNetInference:
         # Convert to uint8 [0, 255]
         mask_uint8 = (mask_resized * 255).astype(np.uint8)
         
+        # Calculate brain percentage from UNet prediction
+        brain_percentage = (np.sum(mask_resized > 0.5) / mask_resized.size) * 100
+        
+        # Check if UNet mask is empty or near-empty (fallback threshold: 0.1%)
+        used_fallback = False
+        fallback_method = None
+        
+        if brain_percentage < 0.1:
+            logger.warning(
+                f"UNet produced near-empty mask ({brain_percentage:.4f}%). Attempting fallback to candidate masks.",
+                extra={'image_id': image_id, 'path': None, 'stage': 'brain_segment_fallback'}
+            )
+            
+            # Try to use candidate masks if available
+            if 'candidates' in result and result['candidates']:
+                # Select best candidate mask (one with largest non-zero area)
+                best_method = None
+                best_area = 0
+                
+                for method_name, candidate_mask in result['candidates'].items():
+                    candidate_area = np.sum(candidate_mask > 0)
+                    if candidate_area > best_area:
+                        best_area = candidate_area
+                        best_method = method_name
+                
+                if best_method and best_area > 0:
+                    # Use best candidate mask as fallback
+                    mask_uint8 = result['candidates'][best_method]
+                    mask_binary = (mask_uint8 > 0).astype(np.float32)
+                    brain_percentage = (np.sum(mask_binary) / mask_binary.size) * 100
+                    used_fallback = True
+                    fallback_method = best_method
+                    
+                    logger.info(
+                        f"Using fallback mask from '{best_method}' method, brain_area={brain_percentage:.2f}%",
+                        extra={'image_id': image_id, 'path': None, 'stage': 'brain_segment_fallback'}
+                    )
+                else:
+                    logger.warning(
+                        "No valid candidate masks available for fallback. Using empty UNet mask.",
+                        extra={'image_id': image_id, 'path': None, 'stage': 'brain_segment_fallback'}
+                    )
+            else:
+                logger.warning(
+                    "Advanced preprocessing not enabled. No candidate masks available for fallback.",
+                    extra={'image_id': image_id, 'path': None, 'stage': 'brain_segment_fallback'}
+                )
+        
         # Apply mask to get brain-extracted image
         brain_extracted = original_image.copy()
-        brain_extracted[mask_resized < 0.5] = 0
+        mask_binary = (mask_uint8 > 0).astype(np.float32)
+        brain_extracted[mask_binary < 0.5] = 0
         
         # Create overlay visualization
         overlay = self._create_overlay(original_image, mask_uint8)
         
-        # Update result
+        # Update result with mask, overlay, and fallback info
         result['mask'] = mask_uint8
         result['brain_extracted'] = brain_extracted
         result['overlay'] = overlay
-        
-        # Calculate statistics
-        brain_percentage = (np.sum(mask_resized > 0.5) / mask_resized.size) * 100
+        result['used_fallback'] = used_fallback
+        result['fallback_method'] = fallback_method
         
         duration = time.time() - start_time
         
         logger.info(
             f"Brain segmentation completed in {duration:.3f}s, "
-            f"brain_area={brain_percentage:.2f}%",
+            f"brain_area={brain_percentage:.2f}%, used_fallback={used_fallback}",
             extra={'image_id': image_id, 'path': None, 'stage': 'brain_segment'}
         )
         

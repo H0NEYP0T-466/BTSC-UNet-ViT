@@ -38,6 +38,20 @@ export interface ClassifyResponse {
   log_context: LogContext;
 }
 
+export interface BrainSegmentationResult {
+  mask: string;
+  overlay: string;
+  brain_extracted: string;
+  preprocessing_stages?: {
+    [key: string]: string;
+  };
+  candidate_masks?: {
+    [key: string]: string;
+  };
+  used_fallback?: boolean;
+  fallback_method?: string;
+}
+
 export interface InferenceResponse {
   image_id: string;
   original_url: string;
@@ -49,18 +63,7 @@ export interface InferenceResponse {
     sharpened: string;
     normalized: string;
   };
-  brain_segmentation: {
-    mask: string;
-    overlay: string;
-    brain_extracted: string;
-    // New fields for advanced preprocessing
-    preprocessing_stages?: {
-      [key: string]: string;
-    };
-    candidate_masks?: {
-      [key: string]: string;
-    };
-  };
+  brain_segmentation: BrainSegmentationResult;
   tumor_segmentation: {
     mask: string;
     overlay: string;

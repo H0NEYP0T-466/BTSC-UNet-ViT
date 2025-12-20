@@ -107,6 +107,8 @@ export function HomePage() {
                           )
                         ) : undefined
                       }
+                      usedFallback={result.brain_segmentation.used_fallback}
+                      fallbackMethod={result.brain_segmentation.fallback_method}
                     />
                   </div>
                 )}
