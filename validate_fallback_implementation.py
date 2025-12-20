@@ -76,6 +76,8 @@ def test_inference_response_schema():
     """Test InferenceResponse schema includes brain segmentation with fallback."""
     print("\nTesting InferenceResponse schema...")
     
+    from app.schemas.responses import BrainSegmentationResult
+    
     data = {
         "image_id": "test789",
         "original_url": "/files/test/original.png",
@@ -115,10 +117,16 @@ def test_inference_response_schema():
     
     try:
         response = InferenceResponse(**data)
-        assert response.brain_segmentation["used_fallback"] == True
-        assert response.brain_segmentation["fallback_method"] == "otsu"
-        assert "candidate_masks" in response.brain_segmentation
+        assert response.brain_segmentation.used_fallback == True
+        assert response.brain_segmentation.fallback_method == "otsu"
+        assert response.brain_segmentation.candidate_masks is not None
         print("✓ InferenceResponse with fallback: PASSED")
+        
+        # Test BrainSegmentationResult directly
+        brain_seg = BrainSegmentationResult(**data['brain_segmentation'])
+        assert brain_seg.used_fallback == True
+        assert brain_seg.fallback_method == "otsu"
+        print("✓ BrainSegmentationResult schema: PASSED")
     except ValidationError as e:
         print(f"✗ InferenceResponse with fallback: FAILED\n{e}")
         return False

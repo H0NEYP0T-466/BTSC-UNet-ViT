@@ -143,11 +143,11 @@ class PipelineService:
             image_id=image_id
         )
         
-        # Save brain segmentation artifacts (only numpy arrays, skip nested dicts)
+        # Save brain segmentation artifacts (only numpy arrays, skip other types)
         brain_segment_urls = {}
         for seg_type, seg_image in brain_segmentation_results.items():
-            # Skip nested dictionaries (e.g., 'preprocessing', 'candidates'), booleans, and None values
-            if isinstance(seg_image, (dict, bool, type(None), str)):
+            # Only process numpy arrays (skip dicts, bools, None, strings)
+            if not isinstance(seg_image, np.ndarray):
                 continue
             url = self.storage.save_artifact(seg_image, image_id, f"brain_{seg_type}")
             brain_segment_urls[seg_type] = self.storage.get_artifact_url(url)

@@ -64,12 +64,23 @@ class ClassifyResponse(BaseModel):
         populate_by_name = True
 
 
+class BrainSegmentationResult(BaseModel):
+    """Brain segmentation result structure for InferenceResponse."""
+    mask: str
+    overlay: str
+    brain_extracted: str
+    preprocessing_stages: Optional[Dict[str, str]] = None
+    candidate_masks: Optional[Dict[str, str]] = None
+    used_fallback: bool = False
+    fallback_method: Optional[str] = None
+
+
 class InferenceResponse(BaseModel):
     """Response for full inference pipeline."""
     image_id: str
     original_url: str
     preprocessing: Dict[str, str]
-    brain_segmentation: Dict[str, Any]  # Changed to Any to support mixed types
+    brain_segmentation: BrainSegmentationResult
     tumor_segmentation: Dict[str, str]
     classification: Dict[str, Any]
     duration_seconds: float

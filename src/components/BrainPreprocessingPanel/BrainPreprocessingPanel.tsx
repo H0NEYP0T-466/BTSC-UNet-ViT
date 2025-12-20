@@ -70,9 +70,7 @@ export function BrainPreprocessingPanel({
         <div className="preprocessing-section">
           <h4 className="section-title">Brain Extraction Methods</h4>
           <p className="section-description">
-            Multiple thresholding methods for comparison. {usedFallback 
-              ? `Fallback method (${fallbackMethod?.toUpperCase()}) was used.`
-              : 'The primary method (Otsu) is used for final segmentation.'}
+            Multiple thresholding methods for comparison. {getCandidateDescription(usedFallback, fallbackMethod)}
           </p>
           <div className="candidates-grid">
             {Object.entries(candidateMasks).map(([name, url]) => (
@@ -146,4 +144,14 @@ function formatStageName(name: string): string {
     .split('_')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+}
+
+/**
+ * Get description text for candidate masks section.
+ */
+function getCandidateDescription(usedFallback?: boolean, fallbackMethod?: string): string {
+  if (usedFallback && fallbackMethod) {
+    return `Fallback method (${fallbackMethod.toUpperCase()}) was used.`;
+  }
+  return 'The primary method (Otsu) is used for final segmentation.';
 }
