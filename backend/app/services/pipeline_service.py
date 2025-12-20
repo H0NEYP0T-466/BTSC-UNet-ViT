@@ -146,6 +146,7 @@ class PipelineService:
         # Step 3: Conditional Tumor Segmentation (NEW LOGIC)
         tumor_segment_urls = {}
         
+        # Check for notumor (current) and no_tumor (backward compatibility)
         if predicted_class == 'notumor' or predicted_class == 'no_tumor':
             # Skip segmentation for no tumor cases
             logger.info(
