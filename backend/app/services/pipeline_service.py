@@ -1,11 +1,10 @@
 """
-Pipeline service for orchestrating preprocessing, brain segmentation, tumor segmentation, and classification.
+Pipeline service for orchestrating preprocessing, tumor segmentation, and classification.
 """
 import time
 from typing import Dict, Optional
 import numpy as np
 from app.utils.preprocessing import preprocess_pipeline
-from app.models.brain_unet.infer_unet import get_brain_unet_inference
 from app.models.unet.infer_unet import get_unet_inference
 from app.models.vit.infer_vit import get_vit_inference
 from app.services.storage_service import get_storage_service
@@ -20,7 +19,6 @@ class PipelineService:
     
     def __init__(self):
         self.storage = get_storage_service()
-        self.brain_unet = None  # Lazy load
         self.tumor_unet = None  # Lazy load
         self.vit = None  # Lazy load
         
@@ -32,15 +30,6 @@ class PipelineService:
     
     def _ensure_models_loaded(self):
         """Ensure models are loaded (lazy initialization)."""
-        # Load Brain UNet model
-        if self.brain_unet is None:
-            logger.info("Loading Brain UNet model", extra={
-                'image_id': None,
-                'path': None,
-                'stage': 'model_load'
-            })
-            self.brain_unet = get_brain_unet_inference()
-        
         # Load Tumor UNet model
         if self.tumor_unet is None:
             logger.info("Loading Tumor UNet model", extra={
@@ -64,9 +53,8 @@ class PipelineService:
         
         Pipeline flow:
         1. Preprocessing (grayscale, denoise, contrast, sharpen, normalize)
-        2. Brain segmentation (extract brain tissue using Brain UNet)
-        3. Tumor segmentation (segment tumor from brain using Tumor UNet)
-        4. Classification (classify tumor type using ViT)
+        2. Tumor segmentation (segment tumor using Tumor UNet)
+        3. Classification (classify tumor type using ViT)
         
         Args:
             image: Input image (RGB or grayscale)
@@ -122,89 +110,24 @@ class PipelineService:
             url = self.storage.save_artifact(stage_image, image_id, stage_name)
             preprocess_urls[stage_name] = self.storage.get_artifact_url(url)
         
-        logger.info("Preprocessing completed, passing to next layer: Brain UNet", extra={
+        logger.info("Preprocessing completed, passing to next layer: Tumor UNet", extra={
             'image_id': image_id,
             'path': None,
             'stage': 'pipeline_preprocess'
         })
         
-        # Step 2: Brain Segmentation
-        logger.info("Step 2: Brain segmentation using Brain UNet", extra={
-            'image_id': image_id,
-            'path': None,
-            'stage': 'pipeline_brain_segment'
-        })
-        
-        self._ensure_models_loaded()
-        
-        # Use Brain UNet to extract brain tissue
-        brain_segmentation_results = self.brain_unet.segment_brain(
-            preprocessed['normalized'],
-            image_id=image_id
-        )
-        
-        # Save brain segmentation artifacts (only numpy arrays, skip other types)
-        brain_segment_urls = {}
-        for seg_type, seg_image in brain_segmentation_results.items():
-            # Only process numpy arrays (skip dicts, bools, None, strings)
-            if not isinstance(seg_image, np.ndarray):
-                continue
-            url = self.storage.save_artifact(seg_image, image_id, f"brain_{seg_type}")
-            brain_segment_urls[seg_type] = self.storage.get_artifact_url(url)
-        
-        # Save preprocessing stages if available
-        brain_preprocessing_stages_urls = None
-        if 'preprocessing' in brain_segmentation_results and brain_segmentation_results['preprocessing']:
-            brain_preprocessing_stages_urls = {}
-            for stage_name, stage_img in brain_segmentation_results['preprocessing'].items():
-                if stage_img is not None and isinstance(stage_img, np.ndarray):
-                    stage_url = self.storage.save_artifact(stage_img, image_id, f'brain_preproc_{stage_name}')
-                    brain_preprocessing_stages_urls[stage_name] = self.storage.get_artifact_url(stage_url)
-        
-        # Save candidate masks if available
-        brain_candidate_masks_urls = None
-        if 'candidates' in brain_segmentation_results and brain_segmentation_results['candidates']:
-            brain_candidate_masks_urls = {}
-            for mask_name, mask_img in brain_segmentation_results['candidates'].items():
-                if mask_img is not None and isinstance(mask_img, np.ndarray):
-                    mask_url_candidate = self.storage.save_artifact(mask_img, image_id, f'brain_candidate_{mask_name}')
-                    brain_candidate_masks_urls[mask_name] = self.storage.get_artifact_url(mask_url_candidate)
-        
-        # Save candidate mask overlays if available
-        brain_candidate_overlays_urls = None
-        if 'candidate_overlays' in brain_segmentation_results and brain_segmentation_results['candidate_overlays']:
-            brain_candidate_overlays_urls = {}
-            for overlay_name, overlay_img in brain_segmentation_results['candidate_overlays'].items():
-                if overlay_img is not None and isinstance(overlay_img, np.ndarray):
-                    overlay_url_candidate = self.storage.save_artifact(overlay_img, image_id, f'brain_candidate_overlay_{overlay_name}')
-                    brain_candidate_overlays_urls[overlay_name] = self.storage.get_artifact_url(overlay_url_candidate)
-        
-        # Add fallback info to brain segmentation URLs
-        brain_segment_urls['used_fallback'] = brain_segmentation_results.get('used_fallback', False)
-        brain_segment_urls['fallback_method'] = brain_segmentation_results.get('fallback_method')
-        if brain_preprocessing_stages_urls:
-            brain_segment_urls['preprocessing_stages'] = brain_preprocessing_stages_urls
-        if brain_candidate_masks_urls:
-            brain_segment_urls['candidate_masks'] = brain_candidate_masks_urls
-        if brain_candidate_overlays_urls:
-            brain_segment_urls['candidate_overlays'] = brain_candidate_overlays_urls
-        
-        logger.info("Brain segmentation completed, passing to next layer: Tumor UNet", extra={
-            'image_id': image_id,
-            'path': None,
-            'stage': 'pipeline_brain_segment'
-        })
-        
-        # Step 3: Tumor Segmentation
-        logger.info("Step 3: Tumor segmentation using Tumor UNet", extra={
+        # Step 2: Tumor Segmentation
+        logger.info("Step 2: Tumor segmentation using Tumor UNet", extra={
             'image_id': image_id,
             'path': None,
             'stage': 'pipeline_tumor_segment'
         })
         
-        # Use brain-extracted image for tumor segmentation
+        self._ensure_models_loaded()
+        
+        # Use preprocessed image for tumor segmentation
         tumor_segmentation_results = self.tumor_unet.segment_image(
-            brain_segmentation_results['brain_extracted'],
+            preprocessed['normalized'],
             image_id=image_id
         )
         
@@ -223,8 +146,8 @@ class PipelineService:
             'stage': 'pipeline_tumor_segment'
         })
         
-        # Step 4: Classification
-        logger.info("Step 4: ViT classification", extra={
+        # Step 3: Classification
+        logger.info("Step 3: ViT classification", extra={
             'image_id': image_id,
             'path': None,
             'stage': 'pipeline_classify'
@@ -253,7 +176,6 @@ class PipelineService:
             'image_id': image_id,
             'original_url': self.storage.get_artifact_url(original_url),
             'preprocessing': preprocess_urls,
-            'brain_segmentation': brain_segment_urls,
             'tumor_segmentation': tumor_segment_urls,
             'classification': classification_results,
             'duration_seconds': total_duration,

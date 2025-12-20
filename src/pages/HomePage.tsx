@@ -4,7 +4,6 @@ import { Footer } from '../components/Footer/Footer';
 import { UploadCard } from '../components/UploadCard/UploadCard';
 import { ImagePreview } from '../components/ImagePreview/ImagePreview';
 import { PreprocessedGallery } from '../components/PreprocessedGallery/PreprocessedGallery';
-import { BrainPreprocessingPanel } from '../components/BrainPreprocessingPanel/BrainPreprocessingPanel';
 import { SegmentationOverlay } from '../components/SegmentationOverlay/SegmentationOverlay';
 import { PredictionCard } from '../components/PredictionCard/PredictionCard';
 import { apiClient } from '../services/api';
@@ -77,49 +76,6 @@ export function HomePage() {
                     }}
                   />
                 </div>
-
-                {/* Brain Segmentation Results */}
-                <div className="result-item">
-                  <SegmentationOverlay
-                    title="Brain Segmentation"
-                    maskUrl={apiClient.getResourceUrl(result.brain_segmentation.mask)}
-                    overlayUrl={apiClient.getResourceUrl(result.brain_segmentation.overlay)}
-                    segmentedUrl={apiClient.getResourceUrl(result.brain_segmentation.brain_extracted)}
-                  />
-                </div>
-
-                {/* Brain Preprocessing Panel - NEW */}
-                {(result.brain_segmentation.preprocessing_stages || 
-                  result.brain_segmentation.candidate_masks ||
-                  result.brain_segmentation.candidate_overlays) && (
-                  <div className="result-item">
-                    <BrainPreprocessingPanel
-                      stages={result.brain_segmentation.preprocessing_stages ? 
-                        Object.fromEntries(
-                          Object.entries(result.brain_segmentation.preprocessing_stages).map(
-                            ([key, value]) => [key, apiClient.getResourceUrl(value as string)]
-                          )
-                        ) : undefined
-                      }
-                      candidateMasks={result.brain_segmentation.candidate_masks ?
-                        Object.fromEntries(
-                          Object.entries(result.brain_segmentation.candidate_masks).map(
-                            ([key, value]) => [key, apiClient.getResourceUrl(value as string)]
-                          )
-                        ) : undefined
-                      }
-                      candidateOverlays={result.brain_segmentation.candidate_overlays ?
-                        Object.fromEntries(
-                          Object.entries(result.brain_segmentation.candidate_overlays).map(
-                            ([key, value]) => [key, apiClient.getResourceUrl(value as string)]
-                          )
-                        ) : undefined
-                      }
-                      usedFallback={result.brain_segmentation.used_fallback}
-                      fallbackMethod={result.brain_segmentation.fallback_method}
-                    />
-                  </div>
-                )}
 
                 {/* Tumor Segmentation Results */}
                 <div className="result-item">

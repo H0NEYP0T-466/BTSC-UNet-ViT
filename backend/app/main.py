@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.logging_config import setup_logging
-from app.routers import health, preprocessing, segmentation, classification, brain_segmentation
+from app.routers import health, preprocessing, segmentation, classification
 from app.schemas.responses import InferenceResponse
 from app.services.pipeline_service import get_pipeline_service
 from app.utils.imaging import bytes_to_numpy
@@ -40,7 +40,6 @@ app.mount("/files", StaticFiles(directory=str(settings.RESOURCES_DIR)), name="fi
 # Include routers
 app.include_router(health.router, prefix=settings.API_PREFIX)
 app.include_router(preprocessing.router, prefix=settings.API_PREFIX)
-app.include_router(brain_segmentation.router, prefix=settings.API_PREFIX)
 app.include_router(segmentation.router, prefix=settings.API_PREFIX)
 app.include_router(classification.router, prefix=settings.API_PREFIX)
 
@@ -64,7 +63,7 @@ async def root():
 @app.post(f"{settings.API_PREFIX}/inference", response_model=InferenceResponse)
 async def run_inference(file: UploadFile = File(...)):
     """
-    Run full inference pipeline: preprocessing -> brain segmentation -> tumor segmentation -> classification.
+    Run full inference pipeline: preprocessing -> tumor segmentation -> classification.
     
     This is the main endpoint that orchestrates all stages.
     """
@@ -120,25 +119,6 @@ async def startup_event():
         'path': None,
         'stage': 'startup'
     })
-    
-    # Check Brain UNet model
-    brain_unet_checkpoint = settings.CHECKPOINTS_BRAIN_UNET / settings.BRAIN_UNET_CHECKPOINT_NAME
-    if brain_unet_checkpoint.exists():
-        logger.info("Brain UNet model found", extra={
-            'image_id': None,
-            'path': str(brain_unet_checkpoint),
-            'stage': 'startup'
-        })
-    else:
-        logger.warning(
-            f"Brain UNet model not found at {brain_unet_checkpoint}. "
-            f"Train the model first using: python train_brain_unet_colab.py",
-            extra={
-                'image_id': None,
-                'path': str(brain_unet_checkpoint),
-                'stage': 'startup'
-            }
-        )
     
     # Check UNet model
     unet_checkpoint = settings.CHECKPOINTS_UNET / settings.UNET_CHECKPOINT_NAME
