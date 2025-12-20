@@ -25,23 +25,6 @@ class PreprocessResponse(BaseModel):
     log_context: LogContext
 
 
-class BrainSegmentResponse(BaseModel):
-    """Response for brain segmentation endpoint."""
-    image_id: str
-    mask_url: str
-    overlay_url: str
-    brain_extracted_url: str
-    brain_area_pct: float
-    log_context: LogContext
-    # New fields for advanced preprocessing
-    preprocessing_stages: Optional[Dict[str, str]] = None
-    candidate_masks: Optional[Dict[str, str]] = None
-    candidate_overlays: Optional[Dict[str, str]] = None
-    # Fallback fields
-    used_fallback: bool = False
-    fallback_method: Optional[str] = None
-
-
 class SegmentResponse(BaseModel):
     """Response for tumor segmentation endpoint."""
     image_id: str
@@ -63,18 +46,6 @@ class ClassifyResponse(BaseModel):
     
     class Config:
         populate_by_name = True
-
-
-class BrainSegmentationResult(BaseModel):
-    """Brain segmentation result structure for InferenceResponse."""
-    mask: str
-    overlay: str
-    brain_extracted: str
-    preprocessing_stages: Optional[Dict[str, str]] = None
-    candidate_masks: Optional[Dict[str, str]] = None
-    candidate_overlays: Optional[Dict[str, str]] = None
-    used_fallback: bool = False
-    fallback_method: Optional[str] = None
 
 
 class InferenceResponse(BaseModel):
