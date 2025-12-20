@@ -51,15 +51,7 @@ export function PreprocessedGallery({ images }: PreprocessedGalleryProps) {
                   }}
                 />
               ) : (
-                <div style={{
-                  width: '100%',
-                  height: '200px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: 'var(--bg-tertiary)',
-                  color: 'var(--text-muted)'
-                }}>
+                <div className="gallery-image-placeholder">
                   Image not available
                 </div>
               )}

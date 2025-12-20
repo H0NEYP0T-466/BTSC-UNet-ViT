@@ -24,11 +24,31 @@ export function HomePage() {
     try {
       const response = await apiClient.runInference(file);
       console.log('[HomePage] Inference completed:', response);
+      
+      // Validate response structure
+      if (!response.image_id || !response.preprocessing || !response.tumor_segmentation || !response.classification) {
+        throw new Error('Incomplete response from API');
+      }
+      
+      // Log preprocessing keys
+      console.log('[HomePage] Preprocessing keys:', Object.keys(response.preprocessing));
+      
+      // Log tumor segmentation keys
+      console.log('[HomePage] Tumor segmentation keys:', Object.keys(response.tumor_segmentation));
+      
+      // Log classification data
+      console.log('[HomePage] Classification:', {
+        class: response.classification.class,
+        confidence: response.classification.confidence,
+        probabilities_length: response.classification.probabilities?.length,
+        logits_length: response.classification.logits?.length
+      });
+      
       setResult(response);
     } catch (err: unknown) {
       console.error('[HomePage] Inference failed:', err);
-      const error = err as { response?: { data?: { detail?: string } } };
-      setError(error.response?.data?.detail || 'Failed to process image. Please try again.');
+      const error = err as { response?: { data?: { detail?: string } }; message?: string };
+      setError(error.response?.data?.detail || error.message || 'Failed to process image. Please try again.');
     } finally {
       setIsLoading(false);
     }
