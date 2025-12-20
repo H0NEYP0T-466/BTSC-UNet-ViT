@@ -36,6 +36,7 @@ class BrainSegmentResponse(BaseModel):
     # New fields for advanced preprocessing
     preprocessing_stages: Optional[Dict[str, str]] = None
     candidate_masks: Optional[Dict[str, str]] = None
+    candidate_overlays: Optional[Dict[str, str]] = None
     # Fallback fields
     used_fallback: bool = False
     fallback_method: Optional[str] = None
@@ -71,6 +72,7 @@ class BrainSegmentationResult(BaseModel):
     brain_extracted: str
     preprocessing_stages: Optional[Dict[str, str]] = None
     candidate_masks: Optional[Dict[str, str]] = None
+    candidate_overlays: Optional[Dict[str, str]] = None
     used_fallback: bool = False
     fallback_method: Optional[str] = None
 

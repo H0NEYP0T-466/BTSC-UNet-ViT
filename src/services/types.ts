@@ -48,6 +48,9 @@ export interface BrainSegmentationResult {
   candidate_masks?: {
     [key: string]: string;
   };
+  candidate_overlays?: {
+    [key: string]: string;
+  };
   used_fallback?: boolean;
   fallback_method?: string;
 }

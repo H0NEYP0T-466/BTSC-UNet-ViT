@@ -157,6 +157,7 @@ class BrainUNetInference:
             'overlay': None,
             'preprocessing': None,
             'candidates': None,
+            'candidate_overlays': None,
             'used_fallback': False,
             'fallback_method': None
         }
@@ -175,18 +176,15 @@ class BrainUNetInference:
             # Run preprocessing pipeline
             preproc_result = apply_pipeline(image.astype(np.float32), self.preproc_config)
             
-            # Extract preprocessed image for model inference
-            # Use the normalized or hist_matched stage as model input
-            if 'hist_matched' in preproc_result['stages']:
-                model_input = preproc_result['stages']['hist_matched']
-            elif 'normalized' in preproc_result['stages']:
-                model_input = preproc_result['stages']['normalized']
-            else:
-                model_input = image.astype(np.float32)
-            
             # Add preprocessing results to output
             result['preprocessing'] = preproc_result['stages']
             result['candidates'] = preproc_result['candidates']
+            
+            # Create overlays for each candidate mask to show them applied on the original image
+            result['candidate_overlays'] = {}
+            for method_name, candidate_mask in result['candidates'].items():
+                overlay = self._create_overlay(original_image, candidate_mask)
+                result['candidate_overlays'][method_name] = overlay
             
             # Save intermediates if requested
             if save_intermediates:
@@ -201,17 +199,15 @@ class BrainUNetInference:
                 'path': None,
                 'stage': 'brain_preproc'
             })
-        else:
-            # Use original image
-            model_input = image.astype(np.float32)
         
-        # Preprocess for model
-        # Normalize to [0, 1]
-        if model_input.max() > 1.0:
-            image_normalized = model_input / 255.0
-        else:
-            # Already normalized (from zscore, need to rescale)
-            image_normalized = (model_input - model_input.min()) / (model_input.max() - model_input.min() + 1e-8)
+        # FIX: Always use original image for model input to match training data format
+        # Training data uses min-max normalization to [0, 1] on raw NIfTI data
+        # We must do the same here regardless of preprocessing
+        model_input = original_image.astype(np.float32)
+        
+        # Normalize to [0, 1] using min-max normalization (SAME AS TRAINING)
+        # This is critical for the model to work correctly
+        image_normalized = (model_input - model_input.min()) / (model_input.max() - model_input.min() + 1e-8)
         
         # Resize to model input size (256x256)
         image_resized = cv2.resize(image_normalized.astype(np.float32), (256, 256), interpolation=cv2.INTER_LINEAR)
