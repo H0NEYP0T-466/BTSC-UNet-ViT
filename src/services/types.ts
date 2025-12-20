@@ -49,7 +49,7 @@ export interface InferenceResponse {
     sharpened: string;
     normalized: string;
   };
-  tumor_segmentation: {
+  tumor_segmentation?: {
     mask: string;
     overlay: string;
     segmented: string;

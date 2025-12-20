@@ -26,15 +26,19 @@ export function HomePage() {
       console.log('[HomePage] Inference completed:', response);
       
       // Validate response structure
-      if (!response.image_id || !response.preprocessing || !response.tumor_segmentation || !response.classification) {
+      if (!response.image_id || !response.preprocessing || !response.classification) {
         throw new Error('Incomplete response from API');
       }
       
       // Log preprocessing keys
       console.log('[HomePage] Preprocessing keys:', Object.keys(response.preprocessing));
       
-      // Log tumor segmentation keys
-      console.log('[HomePage] Tumor segmentation keys:', Object.keys(response.tumor_segmentation));
+      // Log tumor segmentation keys if present
+      if (response.tumor_segmentation) {
+        console.log('[HomePage] Tumor segmentation keys:', Object.keys(response.tumor_segmentation));
+      } else {
+        console.log('[HomePage] No tumor segmentation (no tumor detected)');
+      }
       
       // Log classification data
       console.log('[HomePage] Classification:', {
@@ -97,15 +101,17 @@ export function HomePage() {
                   />
                 </div>
 
-                {/* Tumor Segmentation Results */}
-                <div className="result-item">
-                  <SegmentationOverlay
-                    title="Tumor Segmentation"
-                    maskUrl={apiClient.getResourceUrl(result.tumor_segmentation.mask)}
-                    overlayUrl={apiClient.getResourceUrl(result.tumor_segmentation.overlay)}
-                    segmentedUrl={apiClient.getResourceUrl(result.tumor_segmentation.segmented)}
-                  />
-                </div>
+                {/* Tumor Segmentation Results - Only show if present */}
+                {result.tumor_segmentation && (
+                  <div className="result-item">
+                    <SegmentationOverlay
+                      title="Tumor Segmentation"
+                      maskUrl={apiClient.getResourceUrl(result.tumor_segmentation.mask)}
+                      overlayUrl={apiClient.getResourceUrl(result.tumor_segmentation.overlay)}
+                      segmentedUrl={apiClient.getResourceUrl(result.tumor_segmentation.segmented)}
+                    />
+                  </div>
+                )}
 
                 {/* Classification Results */}
                 <div className="result-item">

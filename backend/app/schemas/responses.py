@@ -53,7 +53,7 @@ class InferenceResponse(BaseModel):
     image_id: str
     original_url: str
     preprocessing: Dict[str, str]
-    tumor_segmentation: Dict[str, str]
+    tumor_segmentation: Optional[Dict[str, str]] = None
     classification: Dict[str, Any]
     duration_seconds: float
     log_context: Dict[str, Any]
