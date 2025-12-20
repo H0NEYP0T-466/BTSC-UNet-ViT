@@ -13,6 +13,9 @@ from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Constants for no tumor classification (supports legacy and current naming)
+NO_TUMOR_CLASSES = {'notumor', 'no_tumor'}
+
 
 class PipelineService:
     """Service for orchestrating the full inference pipeline."""
@@ -51,10 +54,10 @@ class PipelineService:
         """
         Run full inference pipeline.
         
-        Pipeline flow:
+        Pipeline flow (NEW):
         1. Preprocessing (grayscale, denoise, contrast, sharpen, normalize)
-        2. Tumor segmentation (segment tumor using Tumor UNet)
-        3. Classification (classify tumor type using ViT)
+        2. ViT Classification (classify tumor type)
+        3. Conditional Tumor Segmentation (only if tumor detected)
         
         Args:
             image: Input image (RGB or grayscale)
@@ -110,60 +113,89 @@ class PipelineService:
             url = self.storage.save_artifact(stage_image, image_id, stage_name)
             preprocess_urls[stage_name] = self.storage.get_artifact_url(url)
         
-        logger.info("Preprocessing completed, passing to next layer: Tumor UNet", extra={
+        logger.info("Preprocessing completed, passing to next layer: ViT classification", extra={
             'image_id': image_id,
             'path': None,
             'stage': 'pipeline_preprocess'
         })
         
-        # Step 2: Tumor Segmentation
-        logger.info("Step 2: Tumor segmentation using Tumor UNet", extra={
-            'image_id': image_id,
-            'path': None,
-            'stage': 'pipeline_tumor_segment'
-        })
-        
-        self._ensure_models_loaded()
-        
-        # Use preprocessed image for tumor segmentation
-        tumor_segmentation_results = self.tumor_unet.segment_image(
-            preprocessed['normalized'],
-            image_id=image_id
-        )
-        
-        # Save tumor segmentation artifacts (only numpy arrays, skip nested dicts)
-        tumor_segment_urls = {}
-        for seg_type, seg_image in tumor_segmentation_results.items():
-            # Skip nested dictionaries for defensive programming
-            if isinstance(seg_image, dict):
-                continue
-            url = self.storage.save_artifact(seg_image, image_id, f"tumor_{seg_type}")
-            tumor_segment_urls[seg_type] = self.storage.get_artifact_url(url)
-        
-        logger.info("Tumor segmentation completed, passing to next layer: ViT classification", extra={
-            'image_id': image_id,
-            'path': None,
-            'stage': 'pipeline_tumor_segment'
-        })
-        
-        # Step 3: Classification
-        logger.info("Step 3: ViT classification", extra={
+        # Step 2: ViT Classification (NEW ORDER)
+        logger.info("Step 2: ViT classification", extra={
             'image_id': image_id,
             'path': None,
             'stage': 'pipeline_classify'
         })
         
+        self._ensure_models_loaded()
+        
+        # Use preprocessed image for classification
         classification_results = self.vit.classify(
-            tumor_segmentation_results['segmented'],
+            preprocessed['normalized'],
             image_id=image_id
         )
+        
+        predicted_class = classification_results['class']
+        
+        logger.info(
+            f"ViT classification completed: class={predicted_class}, "
+            f"confidence={classification_results['confidence']:.4f}",
+            extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'pipeline_classify'
+            }
+        )
+        
+        # Step 3: Conditional Tumor Segmentation (NEW LOGIC)
+        tumor_segment_urls = {}
+        
+        # Check for notumor using centralized constant (backward compatible)
+        if predicted_class in NO_TUMOR_CLASSES:
+            # Skip segmentation for no tumor cases
+            logger.info(
+                "No tumor detected by ViT, skipping tumor segmentation",
+                extra={
+                    'image_id': image_id,
+                    'path': None,
+                    'stage': 'pipeline_skip_segment'
+                }
+            )
+        else:
+            # Perform tumor segmentation for tumor cases
+            logger.info(
+                f"Tumor detected ({predicted_class}), performing tumor segmentation",
+                extra={
+                    'image_id': image_id,
+                    'path': None,
+                    'stage': 'pipeline_tumor_segment'
+                }
+            )
+            
+            tumor_segmentation_results = self.tumor_unet.segment_image(
+                preprocessed['normalized'],
+                image_id=image_id
+            )
+            
+            # Save tumor segmentation artifacts (only numpy arrays, skip nested dicts)
+            for seg_type, seg_image in tumor_segmentation_results.items():
+                # Skip nested dictionaries for defensive programming
+                if isinstance(seg_image, dict):
+                    continue
+                url = self.storage.save_artifact(seg_image, image_id, f"tumor_{seg_type}")
+                tumor_segment_urls[seg_type] = self.storage.get_artifact_url(url)
+            
+            logger.info("Tumor segmentation completed", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'pipeline_tumor_segment'
+            })
         
         # Compile results
         total_duration = time.time() - start_time
         
         logger.info(
             f"Inference pipeline completed in {total_duration:.3f}s: "
-            f"class={classification_results['class']}, "
+            f"class={predicted_class}, "
             f"confidence={classification_results['confidence']:.4f}",
             extra={
                 'image_id': image_id,
@@ -172,11 +204,10 @@ class PipelineService:
             }
         )
         
-        return {
+        result = {
             'image_id': image_id,
             'original_url': self.storage.get_artifact_url(original_url),
             'preprocessing': preprocess_urls,
-            'tumor_segmentation': tumor_segment_urls,
             'classification': classification_results,
             'duration_seconds': total_duration,
             'log_context': {
@@ -184,6 +215,12 @@ class PipelineService:
                 'total_duration': total_duration
             }
         }
+        
+        # Only add tumor_segmentation if it was performed
+        if tumor_segment_urls:
+            result['tumor_segmentation'] = tumor_segment_urls
+        
+        return result
 
 
 # Singleton instance

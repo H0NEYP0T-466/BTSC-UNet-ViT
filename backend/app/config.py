@@ -42,8 +42,11 @@ class Settings(BaseSettings):
 
     # Dataset roots (adjusted for Colab local folder)
     DATASET_ROOT: Path = BASE_DIR / "UNet_Dataset"
+    # ViT classification dataset (raw images organized by class: notumor, glioma, meningioma, pituitary)
+    VIT_DATASET_ROOT: Path = BASE_DIR / "dataset" / "Vit_Dataset"
+    # Legacy path for backward compatibility (was used for segmented outputs, now deprecated)
     SEGMENTED_DATASET_ROOT: Path = DATASET_ROOT / "Vit_Dataset"
-    BRATS_ROOT: Path = DATASET_ROOT  # your UNet dataset folder
+    BRATS_ROOT: Path = DATASET_ROOT  # UNet segmentation dataset (4-channel H5 files)
 
     # Model checkpoint directories
     CHECKPOINTS_UNET: Path = CHECKPOINTS_DIR / "unet"
@@ -61,7 +64,7 @@ class Settings(BaseSettings):
     VIT_MODEL_NAME: str = "vit_base_patch16_224"
     VIT_NUM_CLASSES:  int = 4
     VIT_IMAGE_SIZE: int = 224
-    VIT_CLASS_NAMES: List[str] = ["no_tumor", "glioma", "meningioma", "pituitary"]
+    VIT_CLASS_NAMES: List[str] = ["notumor", "glioma", "meningioma", "pituitary"]
 
     # Training settings
     BATCH_SIZE: int = 16  # ✅ Increased from 8 to 16 for better GPU utilization (15GB GPU RAM)
