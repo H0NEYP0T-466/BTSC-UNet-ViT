@@ -42,9 +42,11 @@ class Settings(BaseSettings):
 
     # Dataset roots (adjusted for Colab local folder)
     DATASET_ROOT: Path = BASE_DIR / "UNet_Dataset"
-    VIT_DATASET_ROOT: Path = BASE_DIR / "dataset" / "Vit_Dataset"  # ViT classification dataset
-    SEGMENTED_DATASET_ROOT: Path = DATASET_ROOT / "Vit_Dataset"  # Legacy, kept for compatibility
-    BRATS_ROOT: Path = DATASET_ROOT  # your UNet dataset folder
+    # ViT classification dataset (raw images organized by class: notumor, glioma, meningioma, pituitary)
+    VIT_DATASET_ROOT: Path = BASE_DIR / "dataset" / "Vit_Dataset"
+    # Legacy path for backward compatibility (was used for segmented outputs, now deprecated)
+    SEGMENTED_DATASET_ROOT: Path = DATASET_ROOT / "Vit_Dataset"
+    BRATS_ROOT: Path = DATASET_ROOT  # UNet segmentation dataset (4-channel H5 files)
 
     # Model checkpoint directories
     CHECKPOINTS_UNET: Path = CHECKPOINTS_DIR / "unet"

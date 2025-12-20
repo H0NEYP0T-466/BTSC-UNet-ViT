@@ -599,8 +599,18 @@ def main():
     
     # Calculate class weights for balanced sampling (optional, helps with imbalanced datasets)
     class_counts = np.bincount([full_dataset.labels[i] for i in train_indices])
-    class_weights = 1.0 / class_counts
-    sample_weights = [class_weights[full_dataset.labels[i]] for i in train_indices]
+    
+    # Check for empty classes and handle division by zero
+    if np.any(class_counts == 0):
+        print(f"   ⚠️  Warning: Some classes have zero samples in training split")
+        print(f"   Class counts: {class_counts}")
+        # Use all samples without weighted sampling if any class is empty
+        sample_weights = [1.0 for _ in train_indices]
+    else:
+        # Calculate weights normally
+        class_weights = 1.0 / class_counts
+        sample_weights = [class_weights[full_dataset.labels[i]] for i in train_indices]
+    
     sampler = WeightedRandomSampler(
         weights=sample_weights,
         num_samples=len(sample_weights),
@@ -610,8 +620,9 @@ def main():
     print(f"   Training samples: {train_size}")
     print(f"   Validation samples: {val_size}")
     print(f"   Class distribution (train): {class_counts}")
-    print(f"\n📊 FINAL DATASET AFTER AUGMENTATION: {len(full_dataset)} images")
+    print(f"\n📊 BASE DATASET SIZE: {len(full_dataset)} images")
     print(f"   (Note: Augmentation is applied on-the-fly during training, not pre-computed)")
+    print(f"   Each training epoch will see augmented variations of these images")
     
     # Create dataloaders
     train_loader = DataLoader(

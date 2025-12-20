@@ -13,6 +13,9 @@ from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Constants for no tumor classification (supports legacy and current naming)
+NO_TUMOR_CLASSES = {'notumor', 'no_tumor'}
+
 
 class PipelineService:
     """Service for orchestrating the full inference pipeline."""
@@ -146,8 +149,8 @@ class PipelineService:
         # Step 3: Conditional Tumor Segmentation (NEW LOGIC)
         tumor_segment_urls = {}
         
-        # Check for notumor (current) and no_tumor (backward compatibility)
-        if predicted_class == 'notumor' or predicted_class == 'no_tumor':
+        # Check for notumor using centralized constant (backward compatible)
+        if predicted_class in NO_TUMOR_CLASSES:
             # Skip segmentation for no tumor cases
             logger.info(
                 "No tumor detected by ViT, skipping tumor segmentation",
