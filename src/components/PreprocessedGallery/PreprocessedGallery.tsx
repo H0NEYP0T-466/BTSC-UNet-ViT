@@ -24,6 +24,12 @@ export function PreprocessedGallery({ images }: PreprocessedGalleryProps) {
     { key: FINAL_STAGE, label: 'Normalized (Final)', isFinal: true },
   ];
 
+  // Defensive programming: check if all required images are present
+  const missingStages = stages.filter(stage => !images[stage.key]);
+  if (missingStages.length > 0) {
+    console.error('[PreprocessedGallery] Missing image stages:', missingStages.map(s => s.key));
+  }
+
   return (
     <div className="preprocessed-gallery card">
       <h3 className="gallery-title">Preprocessing Stages</h3>
@@ -34,11 +40,21 @@ export function PreprocessedGallery({ images }: PreprocessedGalleryProps) {
             className={`gallery-item ${stage.isFinal ? 'gallery-item-final' : ''}`}
           >
             <div className="gallery-image-container">
-              <img
-                src={images[stage.key]}
-                alt={stage.label}
-                className="gallery-image"
-              />
+              {images[stage.key] ? (
+                <img
+                  src={images[stage.key]}
+                  alt={stage.label}
+                  className="gallery-image"
+                  onError={(e) => {
+                    console.error(`[PreprocessedGallery] Failed to load image for ${stage.key}`);
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="gallery-image-placeholder">
+                  Image not available
+                </div>
+              )}
               {stage.isFinal && (
                 <div className="final-badge">→ To Models</div>
               )}

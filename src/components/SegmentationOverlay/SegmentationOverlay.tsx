@@ -11,6 +11,10 @@ interface SegmentationOverlayProps {
 export function SegmentationOverlay({ maskUrl, overlayUrl, segmentedUrl, title = 'Segmentation Results' }: SegmentationOverlayProps) {
   const [opacity, setOpacity] = useState(0.5);
 
+  const handleImageError = (imageName: string) => {
+    console.error(`[SegmentationOverlay] Failed to load ${imageName}`);
+  };
+
   return (
     <div className="segmentation-overlay card">
       <h3 className="overlay-title">{title}</h3>
@@ -18,21 +22,36 @@ export function SegmentationOverlay({ maskUrl, overlayUrl, segmentedUrl, title =
       <div className="overlay-grid">
         <div className="overlay-item">
           <div className="overlay-image-container">
-            <img src={maskUrl} alt="Segmentation Mask" className="overlay-image" />
+            <img 
+              src={maskUrl} 
+              alt="Segmentation Mask" 
+              className="overlay-image"
+              onError={() => handleImageError('mask')}
+            />
           </div>
           <p className="overlay-label">Binary Mask</p>
         </div>
 
         <div className="overlay-item">
           <div className="overlay-image-container">
-            <img src={overlayUrl} alt="Overlay" className="overlay-image" />
+            <img 
+              src={overlayUrl} 
+              alt="Overlay" 
+              className="overlay-image"
+              onError={() => handleImageError('overlay')}
+            />
           </div>
           <p className="overlay-label">Overlay on Original</p>
         </div>
 
         <div className="overlay-item">
           <div className="overlay-image-container">
-            <img src={segmentedUrl} alt="Segmented Tumor" className="overlay-image" />
+            <img 
+              src={segmentedUrl} 
+              alt="Segmented Tumor" 
+              className="overlay-image"
+              onError={() => handleImageError('segmented')}
+            />
           </div>
           <p className="overlay-label">Cropped Tumor Region</p>
         </div>
