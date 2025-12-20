@@ -69,7 +69,7 @@ class InferenceResponse(BaseModel):
     image_id: str
     original_url: str
     preprocessing: Dict[str, str]
-    brain_segmentation: Dict[str, str]
+    brain_segmentation: Dict[str, Any]  # Changed to Any to support mixed types
     tumor_segmentation: Dict[str, str]
     classification: Dict[str, Any]
     duration_seconds: float
