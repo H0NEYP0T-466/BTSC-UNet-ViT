@@ -50,9 +50,9 @@ export interface InferenceResponse {
     normalized: string;
   };
   tumor_segmentation?: {
-    mask?: string;
-    overlay?: string;
-    segmented?: string;
+    mask: string;
+    overlay: string;
+    segmented: string;
     heatmap?: string;
     probability_map?: string;
   };
