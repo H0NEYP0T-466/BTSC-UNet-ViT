@@ -1,66 +1,47 @@
-import os
 import nibabel as nib
 import numpy as np
 import matplotlib.pyplot as plt
 
-DATASET_DIR = r"X:\NFBS_Dataset\NFBS_Dataset"
+# ----------------------------
+# Correct NFBS Paths (Windows)
+# ----------------------------
+image_path = r"X:\file\FAST_API\BTSC-UNet-ViT\backend\dataset\NFBS_Dataset\A00028185\sub-A00028185_ses-NFB3_T1w.nii.gz"
+mask_path  = r"X:\file\FAST_API\BTSC-UNet-ViT\backend\dataset\NFBS_Dataset\A00028185\sub-A00028185_ses-NFB3_T1w_brainmask.nii.gz"
 
-subjects = sorted(os.listdir(DATASET_DIR))
-subjects = [s for s in subjects if os.path.isdir(os.path.join(DATASET_DIR, s))]
+# ----------------------------
+# Load NIfTI files
+# ----------------------------
+image_nii = nib.load(image_path)
+mask_nii  = nib.load(mask_path)
 
-print(f"Total subjects found: {len(subjects)}\n")
+image = image_nii.get_fdata()
+mask  = mask_nii.get_fdata()
 
-stats = []
+print("Image shape:", image.shape)
+print("Mask shape :", mask.shape)
 
-for sid in subjects:
-    subj_path = os.path.join(DATASET_DIR, sid)
+# ----------------------------
+# Select middle axial slice
+# ----------------------------
+slice_idx = image.shape[2] // 2
 
-    t1 = [f for f in os.listdir(subj_path) if f.endswith("_T1w.nii.gz")]
-    mask = [f for f in os.listdir(subj_path) if f.endswith("_brainmask.nii.gz")]
+image_slice = image[:, :, slice_idx]
+mask_slice  = mask[:, :, slice_idx]
 
-    if len(t1) != 1 or len(mask) != 1:
-        print(f"[WARNING] Missing files in {sid}")
-        continue
+# ----------------------------
+# Plot side-by-side
+# ----------------------------
+plt.figure(figsize=(12, 5))
 
-    t1_img = nib.load(os.path.join(subj_path, t1[0]))
-    mask_img = nib.load(os.path.join(subj_path, mask[0]))
+plt.subplot(1, 2, 1)
+plt.imshow(image_slice.T, cmap="gray", origin="lower")
+plt.title("NFBS T1 MRI")
+plt.axis("off")
 
-    t1_data = t1_img.get_fdata()
-    mask_data = mask_img.get_fdata()
+plt.subplot(1, 2, 2)
+plt.imshow(mask_slice.T, cmap="gray", origin="lower")
+plt.title("Ground Truth Brain Mask")
+plt.axis("off")
 
-    stats.append({
-        "subject": sid,
-        "shape": t1_data.shape,
-        "voxel_size": t1_img.header.get_zooms(),
-        "intensity_min": np.min(t1_data),
-        "intensity_max": np.max(t1_data),
-        "mask_unique": np.unique(mask_data)
-    })
-
-# Print summary
-print("\n=== DATASET SUMMARY ===")
-print(f"Subjects analyzed: {len(stats)}")
-print(f"Image shape (example): {stats[0]['shape']}")
-print(f"Voxel size (example): {stats[0]['voxel_size']}")
-print(f"Mask values: {stats[0]['mask_unique']}")
-
-# Visual check (middle slice)
-example = stats[0]["subject"]
-example_path = os.path.join(DATASET_DIR, example)
-
-t1 = nib.load(os.path.join(example_path,
-       [f for f in os.listdir(example_path) if f.endswith("_T1w.nii.gz")][0])).get_fdata()
-mask = nib.load(os.path.join(example_path,
-       [f for f in os.listdir(example_path) if f.endswith("_brainmask.nii.gz")][0])).get_fdata()
-
-z = t1.shape[2] // 2
-
-plt.figure(figsize=(10,4))
-plt.subplot(1,2,1)
-plt.imshow(t1[:,:,z], cmap="gray")
-plt.title("Raw T1")
-
-plt.subplot(1,2,2)
-plt.imshow(mask[:,:,z], cmap="gray")
-plt.title("Brain Mask")
+plt.tight_layout()
 plt.show()
