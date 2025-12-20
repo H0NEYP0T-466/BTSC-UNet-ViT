@@ -10,10 +10,52 @@ import torch
 from torch.utils.data import Dataset, DataLoader, random_split
 import nibabel as nib
 import cv2
+import albumentations as A
 from app.config import settings
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def get_train_augmentation():
+    """
+    Get training data augmentation pipeline for brain segmentation.
+    
+    Augmentations include:
+    - Horizontal flip (50% probability)
+    - Small rotation up to 10 degrees
+    - Intensity shift and gamma adjustment
+    - Gaussian noise
+    
+    Returns:
+        Albumentations Compose object
+    """
+    return A.Compose([
+        # Geometric augmentations
+        A.HorizontalFlip(p=0.5),
+        A.Rotate(limit=10, p=0.5, border_mode=cv2.BORDER_CONSTANT, value=0),
+        
+        # Intensity augmentations
+        A.RandomBrightnessContrast(
+            brightness_limit=0.2,
+            contrast_limit=0.2,
+            p=0.5
+        ),
+        A.RandomGamma(gamma_limit=(80, 120), p=0.5),
+        
+        # Noise augmentation
+        A.GaussNoise(var_limit=(0.0, 0.05), p=0.3),
+    ])
+
+
+def get_val_augmentation():
+    """
+    Get validation data augmentation pipeline (no augmentation).
+    
+    Returns:
+        Albumentations Compose object (no-op)
+    """
+    return None  # No augmentation for validation
 
 
 class NFBSDataset(Dataset):

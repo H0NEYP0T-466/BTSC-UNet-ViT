@@ -12,16 +12,25 @@ logger = get_logger(__name__)
 class DoubleConv(nn.Module):
     """Double convolution block: Conv -> BN -> ReLU -> Conv -> BN -> ReLU"""
     
-    def __init__(self, in_channels: int, out_channels: int):
+    def __init__(self, in_channels: int, out_channels: int, dropout_p: float = 0.0):
         super().__init__()
-        self.double_conv = nn.Sequential(
+        layers = [
             nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=True)
+        ]
+        
+        # Add dropout if specified
+        if dropout_p > 0:
+            layers.append(nn.Dropout2d(p=dropout_p))
+        
+        layers.extend([
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True)
-        )
+        ])
+        
+        self.double_conv = nn.Sequential(*layers)
     
     def forward(self, x):
         return self.double_conv(x)
@@ -37,7 +46,8 @@ class BrainUNet(nn.Module):
         self,
         in_channels: int = 1,
         out_channels: int = 1,
-        features: Tuple[int, ...] = (32, 64, 128, 256, 512)
+        features: Tuple[int, ...] = (32, 64, 128, 256, 512),
+        bottleneck_dropout: float = 0.2
     ):
         super().__init__()
         self.in_channels = in_channels
@@ -55,8 +65,8 @@ class BrainUNet(nn.Module):
             self.encoder.append(DoubleConv(in_channels, feature))
             in_channels = feature
         
-        # Bottleneck
-        self.bottleneck = DoubleConv(features[-1], features[-1] * 2)
+        # Bottleneck with dropout for regularization
+        self.bottleneck = DoubleConv(features[-1], features[-1] * 2, dropout_p=bottleneck_dropout)
         
         # Decoder (upsampling path)
         self.decoder = nn.ModuleList()
@@ -73,7 +83,7 @@ class BrainUNet(nn.Module):
         
         logger.info(
             f"BrainUNet initialized: in_channels={original_in_channels}, out_channels={out_channels}, "
-            f"features={features}",
+            f"features={features}, bottleneck_dropout={bottleneck_dropout}",
             extra={'image_id': None, 'path': None, 'stage': 'model_init'}
         )
     

@@ -1,12 +1,21 @@
 """
 Brain UNet inference for brain extraction.
 """
+import os
+import sys
 import time
+import yaml
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 import numpy as np
 import torch
 import cv2
+
+# Add btsc module to path
+project_root = Path(__file__).resolve().parents[4]  # Go up to project root
+sys.path.insert(0, str(project_root))
+
+from btsc.preprocess.brain_extraction import apply_pipeline
 from app.models.brain_unet.model import get_brain_unet_model
 from app.config import settings
 from app.utils.logger import get_logger
@@ -20,7 +29,8 @@ class BrainUNetInference:
     def __init__(
         self,
         model_path: Optional[Path] = None,
-        device: Optional[str] = None
+        device: Optional[str] = None,
+        enable_advanced_preproc: bool = True
     ):
         """
         Initialize Brain UNet inference.
@@ -28,18 +38,51 @@ class BrainUNetInference:
         Args:
             model_path: Path to trained model checkpoint
             device: Device to run inference on ('cuda' or 'cpu')
+            enable_advanced_preproc: Enable advanced brain preprocessing pipeline (default: True)
         """
         self.device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
         self.model_path = model_path or (settings.CHECKPOINTS_BRAIN_UNET / settings.BRAIN_UNET_CHECKPOINT_NAME)
+        self.enable_advanced_preproc = enable_advanced_preproc
+        
+        # Load preprocessing config
+        self.preproc_config = self._load_preproc_config()
         
         # Load model
         self.model = self._load_model()
         
         logger.info(
             f"BrainUNet inference initialized: device={self.device}, "
-            f"model_path={self.model_path}",
+            f"model_path={self.model_path}, advanced_preproc={self.enable_advanced_preproc}",
             extra={'image_id': None, 'path': str(self.model_path), 'stage': 'infer_init'}
         )
+    
+    def _load_preproc_config(self) -> Dict[str, Any]:
+        """Load brain preprocessing configuration."""
+        config_path = project_root / "btsc" / "configs" / "brain_preproc.yaml"
+        
+        if not config_path.exists():
+            logger.warning(
+                f"Brain preprocessing config not found at {config_path}, using defaults",
+                extra={'image_id': None, 'path': str(config_path), 'stage': 'config_load'}
+            )
+            return {'enable': False}
+        
+        try:
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+            
+            logger.info(
+                f"Loaded brain preprocessing config from {config_path}",
+                extra={'image_id': None, 'path': str(config_path), 'stage': 'config_load'}
+            )
+            
+            return config
+        except Exception as e:
+            logger.error(
+                f"Failed to load preprocessing config: {e}",
+                extra={'image_id': None, 'path': str(config_path), 'stage': 'config_load'}
+            )
+            return {'enable': False}
     
     def _load_model(self) -> torch.nn.Module:
         """Load the trained model."""
@@ -75,20 +118,26 @@ class BrainUNetInference:
     def segment_brain(
         self,
         image: np.ndarray,
-        image_id: Optional[str] = None
-    ) -> Dict[str, np.ndarray]:
+        image_id: Optional[str] = None,
+        save_intermediates: bool = False,
+        output_dir: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
-        Segment brain from input image.
+        Segment brain from input image with optional advanced preprocessing.
         
         Args:
             image: Input grayscale image (H, W) in range [0, 255]
             image_id: Optional image identifier for logging
+            save_intermediates: Save intermediate preprocessing stages (default: False)
+            output_dir: Directory to save intermediates (default: outputs/preproc/{image_id})
             
         Returns:
             Dictionary with:
                 - mask: Binary brain mask (H, W) in range [0, 255]
                 - brain_extracted: Brain-only image (H, W) in range [0, 255]
                 - overlay: Brain mask overlay on original image
+                - preprocessing: Dict with preprocessing stages (if advanced preproc enabled)
+                - candidates: Dict with candidate masks (if advanced preproc enabled)
         """
         start_time = time.time()
         
@@ -102,12 +151,63 @@ class BrainUNetInference:
         original_shape = image.shape
         original_image = image.copy()
         
-        # Preprocess image
+        result = {
+            'mask': None,
+            'brain_extracted': None,
+            'overlay': None
+        }
+        
+        # Apply advanced preprocessing if enabled
+        if self.enable_advanced_preproc and self.preproc_config.get('enable', False):
+            logger.info("Applying advanced brain preprocessing pipeline", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'brain_preproc'
+            })
+            
+            # Run preprocessing pipeline
+            preproc_result = apply_pipeline(image.astype(np.float32), self.preproc_config)
+            
+            # Extract preprocessed image for model inference
+            # Use the normalized or hist_matched stage as model input
+            if 'hist_matched' in preproc_result['stages']:
+                model_input = preproc_result['stages']['hist_matched']
+            elif 'normalized' in preproc_result['stages']:
+                model_input = preproc_result['stages']['normalized']
+            else:
+                model_input = image.astype(np.float32)
+            
+            # Add preprocessing results to output
+            result['preprocessing'] = preproc_result['stages']
+            result['candidates'] = preproc_result['candidates']
+            
+            # Save intermediates if requested
+            if save_intermediates:
+                self._save_preprocessing_stages(
+                    preproc_result,
+                    image_id,
+                    output_dir or f"outputs/preproc/{image_id}"
+                )
+            
+            logger.info("Advanced preprocessing completed", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'brain_preproc'
+            })
+        else:
+            # Use original image
+            model_input = image.astype(np.float32)
+        
+        # Preprocess for model
         # Normalize to [0, 1]
-        image_normalized = image.astype(np.float32) / 255.0
+        if model_input.max() > 1.0:
+            image_normalized = model_input / 255.0
+        else:
+            # Already normalized (from zscore, need to rescale)
+            image_normalized = (model_input - model_input.min()) / (model_input.max() - model_input.min() + 1e-8)
         
         # Resize to model input size (256x256)
-        image_resized = cv2.resize(image_normalized, (256, 256), interpolation=cv2.INTER_LINEAR)
+        image_resized = cv2.resize(image_normalized.astype(np.float32), (256, 256), interpolation=cv2.INTER_LINEAR)
         
         # Convert to tensor [1, 1, H, W]
         image_tensor = torch.from_numpy(image_resized).unsqueeze(0).unsqueeze(0).float()
@@ -136,6 +236,11 @@ class BrainUNetInference:
         # Create overlay visualization
         overlay = self._create_overlay(original_image, mask_uint8)
         
+        # Update result
+        result['mask'] = mask_uint8
+        result['brain_extracted'] = brain_extracted
+        result['overlay'] = overlay
+        
         # Calculate statistics
         brain_percentage = (np.sum(mask_resized > 0.5) / mask_resized.size) * 100
         
@@ -147,11 +252,52 @@ class BrainUNetInference:
             extra={'image_id': image_id, 'path': None, 'stage': 'brain_segment'}
         )
         
-        return {
-            'mask': mask_uint8,
-            'brain_extracted': brain_extracted,
-            'overlay': overlay
-        }
+        return result
+    
+    def _save_preprocessing_stages(
+        self,
+        preproc_result: Dict[str, Any],
+        image_id: str,
+        output_dir: str
+    ):
+        """
+        Save preprocessing stages to disk.
+        
+        Args:
+            preproc_result: Result from apply_pipeline()
+            image_id: Image identifier
+            output_dir: Output directory
+        """
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        
+        # Save stages
+        for stage_name, stage_img in preproc_result['stages'].items():
+            # Normalize to uint8
+            img_uint8 = ((stage_img - stage_img.min()) / (stage_img.max() - stage_img.min() + 1e-8) * 255).astype(np.uint8)
+            save_path = output_path / f"{stage_name}.png"
+            cv2.imwrite(str(save_path), img_uint8)
+        
+        # Save candidate masks
+        for mask_name, mask_img in preproc_result['candidates'].items():
+            save_path = output_path / f"mask_{mask_name}.png"
+            cv2.imwrite(str(save_path), mask_img)
+        
+        # Save final results
+        final = preproc_result['final']
+        for key, img in final.items():
+            if img is not None and img.size > 0:
+                if img.max() > 1.0:
+                    img_uint8 = img.astype(np.uint8)
+                else:
+                    img_uint8 = (img * 255).astype(np.uint8)
+                save_path = output_path / f"{key}.png"
+                cv2.imwrite(str(save_path), img_uint8)
+        
+        logger.info(
+            f"Saved preprocessing stages to {output_dir}",
+            extra={'image_id': image_id, 'path': output_dir, 'stage': 'save_preproc'}
+        )
     
     def _create_overlay(self, image: np.ndarray, mask: np.ndarray) -> np.ndarray:
         """

@@ -53,6 +53,13 @@ export interface InferenceResponse {
     mask: string;
     overlay: string;
     brain_extracted: string;
+    // New fields for advanced preprocessing
+    preprocessing_stages?: {
+      [key: string]: string;
+    };
+    candidate_masks?: {
+      [key: string]: string;
+    };
   };
   tumor_segmentation: {
     mask: string;

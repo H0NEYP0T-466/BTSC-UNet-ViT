@@ -1,0 +1,129 @@
+import './BrainPreprocessingPanel.css';
+
+export interface BrainPreprocessingPanelProps {
+  stages?: {
+    [key: string]: string;
+  };
+  candidateMasks?: {
+    [key: string]: string;
+  };
+  finalMask?: string;
+  overlay?: string;
+  cropped?: string;
+}
+
+export function BrainPreprocessingPanel({
+  stages,
+  candidateMasks,
+  finalMask,
+  overlay,
+  cropped
+}: BrainPreprocessingPanelProps) {
+  // If no preprocessing data, don't show the panel
+  if (!stages && !candidateMasks) {
+    return null;
+  }
+
+  return (
+    <div className="brain-preprocessing-panel card">
+      <h3 className="panel-title">Brain Segmentation Preprocessing</h3>
+      <p className="panel-description">
+        Advanced preprocessing pipeline harmonizes external data to NFBS characteristics
+        for improved brain segmentation accuracy.
+      </p>
+
+      {/* Preprocessing Stages */}
+      {stages && Object.keys(stages).length > 0 && (
+        <div className="preprocessing-section">
+          <h4 className="section-title">Preprocessing Stages</h4>
+          <div className="stages-grid">
+            {Object.entries(stages).map(([name, url]) => (
+              <div key={name} className="stage-item">
+                <img 
+                  src={url} 
+                  alt={`${name} stage`}
+                  className="stage-image"
+                />
+                <p className="stage-name">{formatStageName(name)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Candidate Masks */}
+      {candidateMasks && Object.keys(candidateMasks).length > 0 && (
+        <div className="preprocessing-section">
+          <h4 className="section-title">Brain Extraction Methods</h4>
+          <p className="section-description">
+            Multiple thresholding methods for comparison. The primary method (Otsu) is used for final segmentation.
+          </p>
+          <div className="candidates-grid">
+            {Object.entries(candidateMasks).map(([name, url]) => (
+              <div key={name} className="candidate-item">
+                <img 
+                  src={url} 
+                  alt={`${name} mask`}
+                  className="candidate-image"
+                />
+                <p className="candidate-name">{name.toUpperCase()}</p>
+                <span className="candidate-badge">
+                  {name === 'otsu' ? 'Primary' : 'Alternative'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Final Results */}
+      {(finalMask || overlay || cropped) && (
+        <div className="preprocessing-section">
+          <h4 className="section-title">Final Results</h4>
+          <div className="final-results-grid">
+            {finalMask && (
+              <div className="result-item-img">
+                <img 
+                  src={finalMask} 
+                  alt="Final brain mask"
+                  className="result-image"
+                />
+                <p className="result-name">Binary Mask</p>
+              </div>
+            )}
+            {overlay && (
+              <div className="result-item-img">
+                <img 
+                  src={overlay} 
+                  alt="Overlay on original"
+                  className="result-image"
+                />
+                <p className="result-name">Overlay</p>
+              </div>
+            )}
+            {cropped && (
+              <div className="result-item-img">
+                <img 
+                  src={cropped} 
+                  alt="Cropped brain region"
+                  className="result-image"
+                />
+                <p className="result-name">Cropped Region</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Format stage name for display (convert snake_case to Title Case).
+ */
+function formatStageName(name: string): string {
+  return name
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}

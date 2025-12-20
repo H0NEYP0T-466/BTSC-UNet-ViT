@@ -4,6 +4,7 @@ import { Footer } from '../components/Footer/Footer';
 import { UploadCard } from '../components/UploadCard/UploadCard';
 import { ImagePreview } from '../components/ImagePreview/ImagePreview';
 import { PreprocessedGallery } from '../components/PreprocessedGallery/PreprocessedGallery';
+import { BrainPreprocessingPanel } from '../components/BrainPreprocessingPanel/BrainPreprocessingPanel';
 import { SegmentationOverlay } from '../components/SegmentationOverlay/SegmentationOverlay';
 import { PredictionCard } from '../components/PredictionCard/PredictionCard';
 import { apiClient } from '../services/api';
@@ -86,6 +87,29 @@ export function HomePage() {
                     segmentedUrl={apiClient.getResourceUrl(result.brain_segmentation.brain_extracted)}
                   />
                 </div>
+
+                {/* Brain Preprocessing Panel - NEW */}
+                {(result.brain_segmentation.preprocessing_stages || 
+                  result.brain_segmentation.candidate_masks) && (
+                  <div className="result-item">
+                    <BrainPreprocessingPanel
+                      stages={result.brain_segmentation.preprocessing_stages ? 
+                        Object.fromEntries(
+                          Object.entries(result.brain_segmentation.preprocessing_stages).map(
+                            ([key, value]) => [key, apiClient.getResourceUrl(value as string)]
+                          )
+                        ) : undefined
+                      }
+                      candidateMasks={result.brain_segmentation.candidate_masks ?
+                        Object.fromEntries(
+                          Object.entries(result.brain_segmentation.candidate_masks).map(
+                            ([key, value]) => [key, apiClient.getResourceUrl(value as string)]
+                          )
+                        ) : undefined
+                      }
+                    />
+                  </div>
+                )}
 
                 {/* Tumor Segmentation Results */}
                 <div className="result-item">

@@ -33,6 +33,9 @@ class BrainSegmentResponse(BaseModel):
     brain_extracted_url: str
     brain_area_pct: float
     log_context: LogContext
+    # New fields for advanced preprocessing
+    preprocessing_stages: Optional[Dict[str, str]] = None
+    candidate_masks: Optional[Dict[str, str]] = None
 
 
 class SegmentResponse(BaseModel):
