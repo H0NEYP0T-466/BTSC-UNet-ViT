@@ -1,0 +1,264 @@
+================================================================================
+GOOGLE COLAB UNET TUMOR TRAINING SETUP
+================================================================================
+✅ GPU Available: Tesla T4
+✅ GPU Memory: 15.8 GB
+
+📊 Dataset structure:
+   Images folder: 3064 PNG files
+   Masks folder: 3064 PNG files
+   Matching pairs: 3064
+
+📈 With data augmentation:
+   Base dataset size: 3064 images
+   Augmentation factor: ~3x (on-the-fly)
+   Effective samples per epoch: ~9192
+
+================================================================================
+
+🚀 Starting training with parameters:
+   Dataset: /content/UNet_Tumor_Dataset
+   Batch size: 16
+   Epochs: 100
+   Learning rate: 0.0001
+   Image size: 256x256
+   Train split: 0.8
+   Early stopping patience: 15
+   Dropout rate: 0.2
+
+📁 Loading dataset...
+✅ Dataloaders created: 154 train batches, 39 val batches
+
+🧠 Creating UNet Tumor model...
+   Device: cuda
+   Input channels: 3 (RGB)
+   Output channels: 1 (binary segmentation)
+   Dropout rate: 0.2
+   Total parameters: 31,106,529
+   Trainable parameters: 31,106,529
+/content/BTSC-UNet-ViT/backend/app/models/unet_tumor/train_unet_tumor.py:136: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  self.scaler = torch.cuda.amp.GradScaler() if self.use_mixed_precision else None
+
+💡 Tips:
+   - Training visualizations saved to: /content/checkpoints
+   - Best model will be saved as: /content/checkpoints/unet_tumor_best.pth
+   - Monitor GPU usage with: !nvidia-smi
+   - Training may take 2-4 hours for 100 epochs
+
+Epoch 01 [Train]:   0% 0/154 [00:00<?, ?it/s]/content/BTSC-UNet-ViT/backend/app/models/unet_tumor/train_unet_tumor.py:168: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast():
+Epoch 01 [Train]: 100% 154/154 [00:33<00:00,  4.58it/s, loss=0.6931, dice=0.0561, acc=0.9604]
+Epoch 01 [Val]  : 100% 39/39 [00:05<00:00,  7.30it/s, loss=0.6593, dice=0.0000, acc=0.9804]
+Epoch 02 [Train]: 100% 154/154 [00:31<00:00,  4.88it/s, loss=0.6422, dice=0.0000, acc=0.9834]
+Epoch 02 [Val]  : 100% 39/39 [00:04<00:00,  8.33it/s, loss=0.6313, dice=0.0000, acc=0.9804]
+Epoch 03 [Train]: 100% 154/154 [00:32<00:00,  4.77it/s, loss=0.6184, dice=0.0000, acc=0.9836]
+Epoch 03 [Val]  : 100% 39/39 [00:04<00:00,  8.33it/s, loss=0.6086, dice=0.0000, acc=0.9804]
+Epoch 04 [Train]: 100% 154/154 [00:32<00:00,  4.69it/s, loss=0.5863, dice=0.1271, acc=0.9531]
+Epoch 04 [Val]  : 100% 39/39 [00:04<00:00,  8.11it/s, loss=0.5821, dice=0.2843, acc=0.9775]
+Epoch 05 [Train]:   1% 1/154 [00:02<06:26,  2.53s/it, loss=0.5780, dice=0.2365, acc=0.9706]/content/BTSC-UNet-ViT/backend/app/models/unet_tumor/train_unet_tumor.py:168: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast():
+Epoch 05 [Train]: 100% 154/154 [00:35<00:00,  4.39it/s, loss=0.5419, dice=0.4252, acc=0.9712]
+Epoch 05 [Val]  : 100% 39/39 [00:06<00:00,  5.68it/s, loss=0.5575, dice=0.2635, acc=0.9767]
+Epoch 06 [Train]: 100% 154/154 [00:33<00:00,  4.60it/s, loss=0.4803, dice=0.8045, acc=0.9927]
+Epoch 06 [Val]  : 100% 39/39 [00:04<00:00,  8.29it/s, loss=0.5266, dice=0.3928, acc=0.9755]
+Epoch 07 [Train]: 100% 154/154 [00:33<00:00,  4.60it/s, loss=0.5196, dice=0.3859, acc=0.9841]
+Epoch 07 [Val]  : 100% 39/39 [00:04<00:00,  8.26it/s, loss=0.4954, dice=0.4654, acc=0.9762]
+Epoch 08 [Train]: 100% 154/154 [00:33<00:00,  4.61it/s, loss=0.5372, dice=0.1457, acc=0.9618]
+Epoch 08 [Val]  : 100% 39/39 [00:04<00:00,  8.29it/s, loss=0.4664, dice=0.4884, acc=0.9737]
+Epoch 09 [Train]: 100% 154/154 [00:33<00:00,  4.62it/s, loss=0.4799, dice=0.5447, acc=0.9844]
+Epoch 09 [Val]  : 100% 39/39 [00:04<00:00,  8.28it/s, loss=0.4351, dice=0.5325, acc=0.9775]
+Epoch 10 [Train]: 100% 154/154 [00:35<00:00,  4.29it/s, loss=0.4103, dice=0.6831, acc=0.9866]
+Epoch 10 [Val]  : 100% 39/39 [00:06<00:00,  6.13it/s, loss=0.4107, dice=0.5748, acc=0.9789]
+Epoch 11 [Train]: 100% 154/154 [00:32<00:00,  4.69it/s, loss=0.4241, dice=0.4839, acc=0.9770]
+Epoch 11 [Val]  : 100% 39/39 [00:04<00:00,  8.25it/s, loss=0.3774, dice=0.5957, acc=0.9803]
+Epoch 12 [Train]: 100% 154/154 [00:33<00:00,  4.65it/s, loss=0.5061, dice=0.2003, acc=0.9757]
+Epoch 12 [Val]  : 100% 39/39 [00:04<00:00,  8.30it/s, loss=0.3333, dice=0.6337, acc=0.9822]
+Epoch 13 [Train]: 100% 154/154 [00:32<00:00,  4.69it/s, loss=0.4059, dice=0.4509, acc=0.9608]
+Epoch 13 [Val]  : 100% 39/39 [00:04<00:00,  8.28it/s, loss=0.2824, dice=0.7594, acc=0.9907]
+Epoch 14 [Train]: 100% 154/154 [00:32<00:00,  4.69it/s, loss=0.2590, dice=0.8180, acc=0.9883]
+Epoch 14 [Val]  : 100% 39/39 [00:04<00:00,  8.13it/s, loss=0.2650, dice=0.7067, acc=0.9861]
+Epoch 15 [Train]: 100% 154/154 [00:34<00:00,  4.41it/s, loss=0.3545, dice=0.5024, acc=0.9771]
+Epoch 15 [Val]  : 100% 39/39 [00:07<00:00,  5.31it/s, loss=0.2142, dice=0.7990, acc=0.9913]
+Epoch 16 [Train]: 100% 154/154 [00:33<00:00,  4.64it/s, loss=0.3508, dice=0.4816, acc=0.9868]
+Epoch 16 [Val]  : 100% 39/39 [00:05<00:00,  7.15it/s, loss=0.1847, dice=0.8144, acc=0.9925]
+Epoch 17 [Train]: 100% 154/154 [00:32<00:00,  4.67it/s, loss=0.3383, dice=0.5142, acc=0.9815]
+Epoch 17 [Val]  : 100% 39/39 [00:05<00:00,  6.87it/s, loss=0.1584, dice=0.8510, acc=0.9945]
+Epoch 18 [Train]: 100% 154/154 [00:32<00:00,  4.68it/s, loss=0.3013, dice=0.5088, acc=0.9850]
+Epoch 18 [Val]  : 100% 39/39 [00:05<00:00,  6.91it/s, loss=0.1203, dice=0.9042, acc=0.9962]
+Epoch 19 [Train]: 100% 154/154 [00:32<00:00,  4.68it/s, loss=0.2425, dice=0.8340, acc=0.9956]
+Epoch 19 [Val]  : 100% 39/39 [00:04<00:00,  7.91it/s, loss=0.1437, dice=0.8399, acc=0.9943]
+Epoch 20 [Train]: 100% 154/154 [00:34<00:00,  4.41it/s, loss=0.1224, dice=0.8301, acc=0.9930]
+Epoch 20 [Val]  : 100% 39/39 [00:07<00:00,  5.11it/s, loss=0.1588, dice=0.7927, acc=0.9928]
+Epoch 21 [Train]: 100% 154/154 [00:32<00:00,  4.69it/s, loss=0.3977, dice=0.2928, acc=0.9816]
+Epoch 21 [Val]  : 100% 39/39 [00:04<00:00,  8.20it/s, loss=0.1152, dice=0.8558, acc=0.9947]
+Epoch 22 [Train]: 100% 154/154 [00:32<00:00,  4.68it/s, loss=0.2557, dice=0.5799, acc=0.9857]
+Epoch 22 [Val]  : 100% 39/39 [00:04<00:00,  8.23it/s, loss=0.0795, dice=0.9113, acc=0.9963]
+Epoch 23 [Train]: 100% 154/154 [00:33<00:00,  4.59it/s, loss=0.4321, dice=0.2588, acc=0.9829]
+Epoch 23 [Val]  : 100% 39/39 [00:04<00:00,  8.21it/s, loss=0.0986, dice=0.8702, acc=0.9951]
+Epoch 24 [Train]: 100% 154/154 [00:33<00:00,  4.64it/s, loss=0.1325, dice=0.8185, acc=0.9953]
+Epoch 24 [Val]  : 100% 39/39 [00:05<00:00,  7.67it/s, loss=0.0781, dice=0.8997, acc=0.9961]
+Epoch 25 [Train]: 100% 154/154 [00:34<00:00,  4.41it/s, loss=0.3094, dice=0.5057, acc=0.9782]
+Epoch 25 [Val]  : 100% 39/39 [00:06<00:00,  5.66it/s, loss=0.0695, dice=0.9110, acc=0.9966]
+Epoch 26 [Train]: 100% 154/154 [00:32<00:00,  4.71it/s, loss=0.1542, dice=0.7652, acc=0.9903]
+Epoch 26 [Val]  : 100% 39/39 [00:05<00:00,  7.04it/s, loss=0.0866, dice=0.8788, acc=0.9955]
+Epoch 27 [Train]: 100% 154/154 [00:33<00:00,  4.65it/s, loss=0.1992, dice=0.6905, acc=0.9924]
+Epoch 27 [Val]  : 100% 39/39 [00:05<00:00,  7.37it/s, loss=0.0961, dice=0.8575, acc=0.9947]
+Epoch 28 [Train]: 100% 154/154 [00:32<00:00,  4.69it/s, loss=0.2693, dice=0.5673, acc=0.9892]
+Epoch 28 [Val]  : 100% 39/39 [00:04<00:00,  8.15it/s, loss=0.0571, dice=0.9218, acc=0.9970]
+Epoch 29 [Train]: 100% 154/154 [00:33<00:00,  4.63it/s, loss=0.1570, dice=0.7441, acc=0.9925]
+Epoch 29 [Val]  : 100% 39/39 [00:04<00:00,  7.95it/s, loss=0.0911, dice=0.8592, acc=0.9949]
+Epoch 30 [Train]: 100% 154/154 [00:35<00:00,  4.38it/s, loss=0.1684, dice=0.7382, acc=0.9891]
+Epoch 30 [Val]  : 100% 39/39 [00:07<00:00,  5.20it/s, loss=0.0516, dice=0.9278, acc=0.9971]
+Epoch 31 [Train]: 100% 154/154 [00:32<00:00,  4.70it/s, loss=0.2186, dice=0.6284, acc=0.9862]
+Epoch 31 [Val]  : 100% 39/39 [00:05<00:00,  7.19it/s, loss=0.0539, dice=0.9228, acc=0.9969]
+Epoch 32 [Train]: 100% 154/154 [00:32<00:00,  4.72it/s, loss=0.1323, dice=0.7999, acc=0.9872]
+Epoch 32 [Val]  : 100% 39/39 [00:04<00:00,  8.20it/s, loss=0.0814, dice=0.8729, acc=0.9953]
+Epoch 33 [Train]: 100% 154/154 [00:32<00:00,  4.68it/s, loss=0.1217, dice=0.7889, acc=0.9957]
+Epoch 33 [Val]  : 100% 39/39 [00:04<00:00,  8.20it/s, loss=0.0560, dice=0.9174, acc=0.9968]
+Epoch 34 [Train]: 100% 154/154 [00:32<00:00,  4.68it/s, loss=0.1605, dice=0.7555, acc=0.9912]
+Epoch 34 [Val]  : 100% 39/39 [00:04<00:00,  8.22it/s, loss=0.0511, dice=0.9235, acc=0.9970]
+Epoch 35 [Train]: 100% 154/154 [00:35<00:00,  4.31it/s, loss=0.1977, dice=0.8113, acc=0.9952]
+Epoch 35 [Val]  : 100% 39/39 [00:06<00:00,  6.13it/s, loss=0.0492, dice=0.9265, acc=0.9972]
+Epoch 36 [Train]: 100% 154/154 [00:33<00:00,  4.61it/s, loss=0.0327, dice=0.9492, acc=0.9988]
+Epoch 36 [Val]  : 100% 39/39 [00:04<00:00,  8.24it/s, loss=0.0604, dice=0.9074, acc=0.9964]
+Epoch 37 [Train]: 100% 154/154 [00:32<00:00,  4.70it/s, loss=0.2231, dice=0.6527, acc=0.9851]
+Epoch 37 [Val]  : 100% 39/39 [00:05<00:00,  7.37it/s, loss=0.0534, dice=0.9164, acc=0.9968]
+Epoch 38 [Train]: 100% 154/154 [00:32<00:00,  4.69it/s, loss=0.0750, dice=0.8887, acc=0.9941]
+Epoch 38 [Val]  : 100% 39/39 [00:05<00:00,  7.21it/s, loss=0.0511, dice=0.9202, acc=0.9969]
+Epoch 39 [Train]: 100% 154/154 [00:32<00:00,  4.71it/s, loss=0.1304, dice=0.8168, acc=0.9925]
+Epoch 39 [Val]  : 100% 39/39 [00:04<00:00,  8.21it/s, loss=0.0652, dice=0.8959, acc=0.9961]
+Epoch 40 [Train]: 100% 154/154 [00:36<00:00,  4.25it/s, loss=0.1859, dice=0.6958, acc=0.9931]
+Epoch 40 [Val]  : 100% 39/39 [00:06<00:00,  5.94it/s, loss=0.0694, dice=0.8877, acc=0.9958]
+Epoch 41 [Train]: 100% 154/154 [00:32<00:00,  4.71it/s, loss=0.2565, dice=0.5074, acc=0.9954]
+Epoch 41 [Val]  : 100% 39/39 [00:04<00:00,  8.26it/s, loss=0.0773, dice=0.8712, acc=0.9952]
+Epoch 42 [Train]: 100% 154/154 [00:33<00:00,  4.61it/s, loss=0.2929, dice=0.5035, acc=0.9879]
+Epoch 42 [Val]  : 100% 39/39 [00:04<00:00,  8.24it/s, loss=0.0640, dice=0.8948, acc=0.9961]
+Epoch 43 [Train]: 100% 154/154 [00:32<00:00,  4.70it/s, loss=0.0911, dice=0.8543, acc=0.9958]
+Epoch 43 [Val]  : 100% 39/39 [00:05<00:00,  7.36it/s, loss=0.0642, dice=0.8923, acc=0.9960]
+Epoch 44 [Train]: 100% 154/154 [00:32<00:00,  4.71it/s, loss=0.0850, dice=0.8824, acc=0.9981]
+Epoch 44 [Val]  : 100% 39/39 [00:05<00:00,  6.97it/s, loss=0.0462, dice=0.9263, acc=0.9971]
+Epoch 45 [Train]: 100% 154/154 [00:34<00:00,  4.42it/s, loss=0.0588, dice=0.9124, acc=0.9968]
+Epoch 45 [Val]  : 100% 39/39 [00:07<00:00,  5.08it/s, loss=0.0465, dice=0.9262, acc=0.9971]
+Epoch 46 [Train]: 100% 154/154 [00:32<00:00,  4.67it/s, loss=0.0866, dice=0.8584, acc=0.9974]
+Epoch 46 [Val]  : 100% 39/39 [00:05<00:00,  6.94it/s, loss=0.0613, dice=0.8973, acc=0.9960]
+Epoch 47 [Train]: 100% 154/154 [00:32<00:00,  4.69it/s, loss=0.1279, dice=0.7938, acc=0.9914]
+Epoch 47 [Val]  : 100% 39/39 [00:05<00:00,  7.74it/s, loss=0.0759, dice=0.8764, acc=0.9956]
+Epoch 48 [Train]: 100% 154/154 [00:32<00:00,  4.67it/s, loss=0.1339, dice=0.8010, acc=0.9959]
+Epoch 48 [Val]  : 100% 39/39 [00:04<00:00,  8.20it/s, loss=0.0424, dice=0.9322, acc=0.9974]
+Epoch 49 [Train]: 100% 154/154 [00:33<00:00,  4.64it/s, loss=0.1159, dice=0.8480, acc=0.9973]
+Epoch 49 [Val]  : 100% 39/39 [00:04<00:00,  7.92it/s, loss=0.0420, dice=0.9310, acc=0.9972]
+Epoch 50 [Train]: 100% 154/154 [00:34<00:00,  4.44it/s, loss=0.2100, dice=0.6388, acc=0.9930]
+Epoch 50 [Val]  : 100% 39/39 [00:07<00:00,  5.44it/s, loss=0.0396, dice=0.9383, acc=0.9976]
+Epoch 51 [Train]: 100% 154/154 [00:32<00:00,  4.70it/s, loss=0.1870, dice=0.6831, acc=0.9893]
+Epoch 51 [Val]  : 100% 39/39 [00:05<00:00,  6.83it/s, loss=0.0463, dice=0.9243, acc=0.9971]
+Epoch 52 [Train]: 100% 154/154 [00:33<00:00,  4.61it/s, loss=0.1196, dice=0.8230, acc=0.9895]
+Epoch 52 [Val]  : 100% 39/39 [00:04<00:00,  8.26it/s, loss=0.0406, dice=0.9352, acc=0.9975]
+Epoch 53 [Train]: 100% 154/154 [00:32<00:00,  4.70it/s, loss=0.1606, dice=0.7226, acc=0.9947]
+Epoch 53 [Val]  : 100% 39/39 [00:05<00:00,  7.26it/s, loss=0.0412, dice=0.9326, acc=0.9973]
+Epoch 54 [Train]: 100% 154/154 [00:32<00:00,  4.67it/s, loss=0.0781, dice=0.8827, acc=0.9951]
+Epoch 54 [Val]  : 100% 39/39 [00:05<00:00,  6.83it/s, loss=0.0457, dice=0.9248, acc=0.9971]
+Epoch 55 [Train]: 100% 154/154 [00:34<00:00,  4.41it/s, loss=0.0732, dice=0.8873, acc=0.9951]
+Epoch 55 [Val]  : 100% 39/39 [00:07<00:00,  5.17it/s, loss=0.0471, dice=0.9222, acc=0.9970]
+Epoch 56 [Train]: 100% 154/154 [00:32<00:00,  4.69it/s, loss=0.1441, dice=0.7658, acc=0.9925]
+Epoch 56 [Val]  : 100% 39/39 [00:05<00:00,  7.20it/s, loss=0.0434, dice=0.9283, acc=0.9973]
+Epoch 57 [Train]: 100% 154/154 [00:32<00:00,  4.67it/s, loss=0.2195, dice=0.6211, acc=0.9873]
+Epoch 57 [Val]  : 100% 39/39 [00:04<00:00,  8.18it/s, loss=0.0425, dice=0.9306, acc=0.9973]
+Epoch 58 [Train]: 100% 154/154 [00:33<00:00,  4.60it/s, loss=0.0649, dice=0.8945, acc=0.9958]
+Epoch 58 [Val]  : 100% 39/39 [00:04<00:00,  8.25it/s, loss=0.0419, dice=0.9321, acc=0.9974]
+Epoch 59 [Train]: 100% 154/154 [00:33<00:00,  4.66it/s, loss=0.2341, dice=0.6180, acc=0.9840]
+Epoch 59 [Val]  : 100% 39/39 [00:04<00:00,  8.13it/s, loss=0.0363, dice=0.9414, acc=0.9977]
+Epoch 60 [Train]: 100% 154/154 [00:34<00:00,  4.44it/s, loss=0.0670, dice=0.8888, acc=0.9956]
+Epoch 60 [Val]  : 100% 39/39 [00:07<00:00,  5.20it/s, loss=0.0441, dice=0.9283, acc=0.9972]
+Epoch 61 [Train]: 100% 154/154 [00:32<00:00,  4.68it/s, loss=0.2549, dice=0.5627, acc=0.9878]
+Epoch 61 [Val]  : 100% 39/39 [00:05<00:00,  6.85it/s, loss=0.0421, dice=0.9323, acc=0.9974]
+Epoch 62 [Train]: 100% 154/154 [00:33<00:00,  4.63it/s, loss=0.1403, dice=0.7797, acc=0.9903]
+Epoch 62 [Val]  : 100% 39/39 [00:05<00:00,  7.34it/s, loss=0.0412, dice=0.9323, acc=0.9973]
+Epoch 63 [Train]: 100% 154/154 [00:32<00:00,  4.68it/s, loss=0.1978, dice=0.6706, acc=0.9891]
+Epoch 63 [Val]  : 100% 39/39 [00:05<00:00,  7.17it/s, loss=0.0369, dice=0.9399, acc=0.9976]
+Epoch 64 [Train]: 100% 154/154 [00:33<00:00,  4.60it/s, loss=0.1158, dice=0.8063, acc=0.9934]
+Epoch 64 [Val]  : 100% 39/39 [00:04<00:00,  8.06it/s, loss=0.0389, dice=0.9372, acc=0.9975]
+Epoch 65 [Train]: 100% 154/154 [00:35<00:00,  4.35it/s, loss=0.1235, dice=0.7968, acc=0.9909]
+Epoch 65 [Val]  : 100% 39/39 [00:06<00:00,  5.92it/s, loss=0.0412, dice=0.9334, acc=0.9974]
+Epoch 66 [Train]: 100% 154/154 [00:33<00:00,  4.62it/s, loss=0.0352, dice=0.9426, acc=0.9982]
+Epoch 66 [Val]  : 100% 39/39 [00:04<00:00,  8.04it/s, loss=0.0410, dice=0.9336, acc=0.9974]
+Epoch 67 [Train]: 100% 154/154 [00:33<00:00,  4.65it/s, loss=0.1604, dice=0.7299, acc=0.9925]
+Epoch 67 [Val]  : 100% 39/39 [00:04<00:00,  8.22it/s, loss=0.0428, dice=0.9292, acc=0.9973]
+Epoch 68 [Train]: 100% 154/154 [00:32<00:00,  4.68it/s, loss=0.1402, dice=0.7650, acc=0.9929]
+Epoch 68 [Val]  : 100% 39/39 [00:04<00:00,  8.01it/s, loss=0.0397, dice=0.9343, acc=0.9974]
+Epoch 69 [Train]: 100% 154/154 [00:33<00:00,  4.61it/s, loss=0.0633, dice=0.9133, acc=0.9988]
+Epoch 69 [Val]  : 100% 39/39 [00:04<00:00,  8.21it/s, loss=0.0359, dice=0.9408, acc=0.9976]
+Epoch 70 [Train]: 100% 154/154 [00:36<00:00,  4.26it/s, loss=0.1136, dice=0.8183, acc=0.9959]
+Epoch 70 [Val]  : 100% 39/39 [00:06<00:00,  6.05it/s, loss=0.0410, dice=0.9331, acc=0.9973]
+Epoch 71 [Train]: 100% 154/154 [00:33<00:00,  4.63it/s, loss=0.2156, dice=0.6637, acc=0.9791]
+Epoch 71 [Val]  : 100% 39/39 [00:04<00:00,  8.25it/s, loss=0.0420, dice=0.9327, acc=0.9973]
+Epoch 72 [Train]: 100% 154/154 [00:32<00:00,  4.68it/s, loss=0.0649, dice=0.8927, acc=0.9961]
+Epoch 72 [Val]  : 100% 39/39 [00:04<00:00,  8.19it/s, loss=0.0446, dice=0.9249, acc=0.9971]
+Epoch 73 [Train]: 100% 154/154 [00:33<00:00,  4.66it/s, loss=0.0957, dice=0.8344, acc=0.9964]
+Epoch 73 [Val]  : 100% 39/39 [00:05<00:00,  6.97it/s, loss=0.0436, dice=0.9285, acc=0.9972]
+Epoch 74 [Train]: 100% 154/154 [00:33<00:00,  4.66it/s, loss=0.1201, dice=0.8193, acc=0.9895]
+Epoch 74 [Val]  : 100% 39/39 [00:04<00:00,  8.19it/s, loss=0.0615, dice=0.8960, acc=0.9958]
+Epoch 75 [Train]: 100% 154/154 [00:34<00:00,  4.40it/s, loss=0.1083, dice=0.8335, acc=0.9941]
+Epoch 75 [Val]  : 100% 39/39 [00:07<00:00,  5.05it/s, loss=0.0573, dice=0.9032, acc=0.9962]
+Epoch 76 [Train]: 100% 154/154 [00:33<00:00,  4.66it/s, loss=0.1401, dice=0.7769, acc=0.9904]
+Epoch 76 [Val]  : 100% 39/39 [00:05<00:00,  7.13it/s, loss=0.0585, dice=0.9022, acc=0.9960]
+Epoch 77 [Train]: 100% 154/154 [00:32<00:00,  4.69it/s, loss=0.2149, dice=0.6259, acc=0.9883]
+Epoch 77 [Val]  : 100% 39/39 [00:04<00:00,  8.09it/s, loss=0.0465, dice=0.9225, acc=0.9969]
+Epoch 78 [Train]: 100% 154/154 [00:32<00:00,  4.67it/s, loss=0.3540, dice=0.3574, acc=0.9877]
+Epoch 78 [Val]  : 100% 39/39 [00:04<00:00,  8.11it/s, loss=0.0491, dice=0.9175, acc=0.9967]
+Epoch 79 [Train]: 100% 154/154 [00:32<00:00,  4.70it/s, loss=0.0621, dice=0.8975, acc=0.9960]
+Epoch 79 [Val]  : 100% 39/39 [00:04<00:00,  8.18it/s, loss=0.0550, dice=0.9077, acc=0.9962]
+Epoch 80 [Train]: 100% 154/154 [00:34<00:00,  4.42it/s, loss=0.0875, dice=0.8499, acc=0.9945]
+Epoch 80 [Val]  : 100% 39/39 [00:07<00:00,  5.30it/s, loss=0.0545, dice=0.9076, acc=0.9963]
+Epoch 81 [Train]: 100% 154/154 [00:32<00:00,  4.68it/s, loss=0.0624, dice=0.8946, acc=0.9962]
+Epoch 81 [Val]  : 100% 39/39 [00:05<00:00,  6.84it/s, loss=0.0482, dice=0.9198, acc=0.9968]
+Epoch 82 [Train]: 100% 154/154 [00:33<00:00,  4.63it/s, loss=0.0371, dice=0.9356, acc=0.9984]
+Epoch 82 [Val]  : 100% 39/39 [00:05<00:00,  6.81it/s, loss=0.0397, dice=0.9353, acc=0.9975]
+Epoch 83 [Train]: 100% 154/154 [00:33<00:00,  4.66it/s, loss=0.0240, dice=0.9627, acc=0.9988]
+Epoch 83 [Val]  : 100% 39/39 [00:05<00:00,  7.45it/s, loss=0.0513, dice=0.9144, acc=0.9965]
+Epoch 84 [Train]: 100% 154/154 [00:32<00:00,  4.70it/s, loss=0.1164, dice=0.8270, acc=0.9921]
+Epoch 84 [Val]  : 100% 39/39 [00:05<00:00,  7.11it/s, loss=0.0526, dice=0.9104, acc=0.9964]
+Epoch 85 [Train]: 100% 154/154 [00:34<00:00,  4.41it/s, loss=0.0544, dice=0.9097, acc=0.9984]
+Epoch 85 [Val]  : 100% 39/39 [00:07<00:00,  5.12it/s, loss=0.0401, dice=0.9349, acc=0.9974]
+Epoch 86 [Train]: 100% 154/154 [00:33<00:00,  4.58it/s, loss=0.0906, dice=0.8394, acc=0.9985]
+Epoch 86 [Val]  : 100% 39/39 [00:04<00:00,  8.09it/s, loss=0.0444, dice=0.9257, acc=0.9971]
+Epoch 87 [Train]: 100% 154/154 [00:32<00:00,  4.67it/s, loss=0.0532, dice=0.9132, acc=0.9971]
+Epoch 87 [Val]  : 100% 39/39 [00:05<00:00,  6.69it/s, loss=0.0472, dice=0.9214, acc=0.9969]
+Epoch 88 [Train]: 100% 154/154 [00:33<00:00,  4.65it/s, loss=0.0450, dice=0.9300, acc=0.9962]
+Epoch 88 [Val]  : 100% 39/39 [00:05<00:00,  7.41it/s, loss=0.0401, dice=0.9336, acc=0.9974]
+Epoch 89 [Train]: 100% 154/154 [00:32<00:00,  4.67it/s, loss=0.2206, dice=0.6140, acc=0.9923]
+Epoch 89 [Val]  : 100% 39/39 [00:04<00:00,  8.15it/s, loss=0.0371, dice=0.9390, acc=0.9976]
+Epoch 90 [Train]: 100% 154/154 [00:35<00:00,  4.38it/s, loss=0.1466, dice=0.7638, acc=0.9889]
+Epoch 90 [Val]  : 100% 39/39 [00:07<00:00,  5.27it/s, loss=0.0400, dice=0.9344, acc=0.9975]
+Epoch 91 [Train]: 100% 154/154 [00:33<00:00,  4.65it/s, loss=0.0394, dice=0.9325, acc=0.9986]
+Epoch 91 [Val]  : 100% 39/39 [00:04<00:00,  8.10it/s, loss=0.0397, dice=0.9352, acc=0.9975]
+Epoch 92 [Train]: 100% 154/154 [00:33<00:00,  4.57it/s, loss=0.1837, dice=0.7022, acc=0.9859]
+Epoch 92 [Val]  : 100% 39/39 [00:04<00:00,  8.29it/s, loss=0.0396, dice=0.9344, acc=0.9974]
+Epoch 93 [Train]: 100% 154/154 [00:33<00:00,  4.65it/s, loss=0.0558, dice=0.9053, acc=0.9977]
+Epoch 93 [Val]  : 100% 39/39 [00:04<00:00,  8.15it/s, loss=0.0472, dice=0.9220, acc=0.9970]
+Epoch 94 [Train]: 100% 154/154 [00:33<00:00,  4.59it/s, loss=0.0967, dice=0.8329, acc=0.9955]
+Epoch 94 [Val]  : 100% 39/39 [00:04<00:00,  8.16it/s, loss=0.0380, dice=0.9377, acc=0.9976]
+Epoch 95 [Train]: 100% 154/154 [00:35<00:00,  4.35it/s, loss=0.0988, dice=0.8199, acc=0.9966]
+Epoch 95 [Val]  : 100% 39/39 [00:06<00:00,  5.96it/s, loss=0.0395, dice=0.9335, acc=0.9974]
+Epoch 96 [Train]: 100% 154/154 [00:33<00:00,  4.63it/s, loss=0.0759, dice=0.8808, acc=0.9970]
+Epoch 96 [Val]  : 100% 39/39 [00:05<00:00,  7.45it/s, loss=0.0359, dice=0.9404, acc=0.9977]
+Epoch 97 [Train]: 100% 154/154 [00:33<00:00,  4.59it/s, loss=0.1331, dice=0.7614, acc=0.9938]
+Epoch 97 [Val]  : 100% 39/39 [00:04<00:00,  8.14it/s, loss=0.0395, dice=0.9359, acc=0.9975]
+Epoch 98 [Train]: 100% 154/154 [00:33<00:00,  4.64it/s, loss=0.1193, dice=0.8077, acc=0.9903]
+Epoch 98 [Val]  : 100% 39/39 [00:04<00:00,  8.03it/s, loss=0.0381, dice=0.9383, acc=0.9976]
+Epoch 99 [Train]: 100% 154/154 [00:33<00:00,  4.66it/s, loss=0.0525, dice=0.9100, acc=0.9969]
+Epoch 99 [Val]  : 100% 39/39 [00:04<00:00,  8.12it/s, loss=0.0399, dice=0.9340, acc=0.9974]
+Epoch 100 [Train]: 100% 154/154 [00:35<00:00,  4.31it/s, loss=0.0646, dice=0.8957, acc=0.9957]
+Epoch 100 [Val]  : 100% 39/39 [00:06<00:00,  5.88it/s, loss=0.0390, dice=0.9352, acc=0.9975]
+
+================================================================================
+✅ TRAINING COMPLETED!
+================================================================================
+
+📊 Final Results:
+   Best Dice Score: 0.8421
+   Best model saved to: /content/checkpoints/unet_tumor_best.pth
+   Last model saved to: /content/checkpoints/unet_tumor_last.pth
+
+💾 To download the model:
+   from google.colab import files
+   files.download('/content/checkpoints/unet_tumor_best.pth')
