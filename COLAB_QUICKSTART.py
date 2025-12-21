@@ -107,7 +107,7 @@ display(Image(filename='/content/checkpoints/confusion_matrix.png'))
 import torch
 
 checkpoint_path = '/content/checkpoints/vit_best.pth'
-checkpoint = torch.load(checkpoint_path)
+checkpoint = torch.load(checkpoint_path, weights_only=False)
 
 print("Best Model Statistics:")
 print("=" * 50)

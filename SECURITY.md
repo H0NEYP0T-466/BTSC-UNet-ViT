@@ -84,11 +84,12 @@ monai==1.5.1
 
 #### For Model Loading:
 ```python
-# Good - Safe model loading
+# For user-trained models from trusted sources, use weights_only=False
+# This is necessary for checkpoints that contain numpy scalars in metadata
 checkpoint = torch.load(
     checkpoint_path,
     map_location=device,
-    weights_only=True  # Still use this, but now with patched version
+    weights_only=False  # Required for checkpoints with numpy metadata (e.g., training metrics)
 )
 
 # Better - Add file validation

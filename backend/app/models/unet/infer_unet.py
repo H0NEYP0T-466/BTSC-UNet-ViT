@@ -66,7 +66,7 @@ class UNetInference:
                 'path': self.checkpoint_path,
                 'stage': 'unet_load'
             })
-            checkpoint = torch.load(self.checkpoint_path, map_location=self.device)
+            checkpoint = torch.load(self.checkpoint_path, map_location=self.device, weights_only=False)
             if 'model_state_dict' in checkpoint:
                 model.load_state_dict(checkpoint['model_state_dict'])
             else:

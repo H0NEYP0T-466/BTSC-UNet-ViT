@@ -66,7 +66,7 @@ def test_inference(checkpoint_path: str, sample_h5: str, output_dir: str):
     checkpoint_path = Path(checkpoint_path)
     if checkpoint_path.exists():
         print(f"   Loading checkpoint: {checkpoint_path}")
-        checkpoint = torch.load(checkpoint_path, map_location=device)
+        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
         if 'model_state_dict' in checkpoint:
             model.load_state_dict(checkpoint['model_state_dict'])
         else:
