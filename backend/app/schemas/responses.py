@@ -54,6 +54,7 @@ class InferenceResponse(BaseModel):
     original_url: str
     preprocessing: Dict[str, str]
     tumor_segmentation: Optional[Dict[str, str]] = None
+    tumor_segmentation2: Optional[Dict[str, str]] = None  # UNet Tumor model results
     classification: Dict[str, Any]
     duration_seconds: float
     log_context: Dict[str, Any]
