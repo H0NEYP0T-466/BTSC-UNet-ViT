@@ -7,7 +7,7 @@ checkpoint_path = r'X:\file\FAST_API\BTSC-UNet-ViT\backend\resources\checkpoints
 
 # 2. Load the heavy 1GB checkpoint
 print(f"Loading heavy model from: {checkpoint_path}...")
-checkpoint = torch.load(checkpoint_path, map_location='cpu')
+checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
 
 # 3. Extract ONLY the weights
 if 'model_state_dict' in checkpoint:
