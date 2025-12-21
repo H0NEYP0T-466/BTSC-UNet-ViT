@@ -15,6 +15,9 @@ from app.utils.imaging import create_overlay, crop_to_bounding_box
 
 logger = get_logger(__name__)
 
+# Threshold for minimum tumor pixels - if below this, use probability map for visibility
+MIN_TUMOR_PIXELS_THRESHOLD = 100
+
 
 class UNetTumorInference:
     """UNet Tumor inference class for tumor segmentation on PNG images."""
@@ -141,7 +144,7 @@ class UNetTumorInference:
         
         # If very few tumor pixels, use probability map for visibility
         tumor_pixels = np.sum(binary_mask > 0)
-        if tumor_pixels < 100:
+        if tumor_pixels < MIN_TUMOR_PIXELS_THRESHOLD:
             return (mask_prob_resized * 255).astype(np.uint8)
         
         return binary_mask

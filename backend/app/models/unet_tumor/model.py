@@ -75,7 +75,7 @@ class UNetTumor(nn.Module):
         # Final convolution
         self.final_conv = nn.Conv2d(features[0], out_channels, kernel_size=1)
         
-        logger.info(f"UNetTumor initialized: in_channels={in_channels}, out_channels={out_channels}, features={features}, dropout={dropout_rate}", extra={
+        logger.info(f"UNetTumor initialized: in_channels={self.in_channels}, out_channels={self.out_channels}, features={features}, dropout={dropout_rate}", extra={
             'image_id': None,
             'path': None,
             'stage': 'model_init'

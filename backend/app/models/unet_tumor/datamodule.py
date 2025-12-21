@@ -18,6 +18,12 @@ from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Augmentation parameters
+AUGMENT_NOISE_PROBABILITY = 0.3  # Probability of applying Gaussian noise
+AUGMENT_NOISE_STD = 10  # Standard deviation for Gaussian noise
+AUGMENT_BRIGHTNESS_RANGE = (0.8, 1.2)  # Min/max brightness multiplier
+AUGMENT_CONTRAST_RANGE = (0.8, 1.2)  # Min/max contrast multiplier
+
 
 class UNetTumorDataset(Dataset):
     """
@@ -118,18 +124,18 @@ class UNetTumorDataset(Dataset):
         
         # Random brightness adjustment
         if np.random.random() > 0.5:
-            factor = np.random.uniform(0.8, 1.2)
+            factor = np.random.uniform(AUGMENT_BRIGHTNESS_RANGE[0], AUGMENT_BRIGHTNESS_RANGE[1])
             image = np.clip(image * factor, 0, 255).astype(np.uint8)
         
         # Random contrast adjustment
         if np.random.random() > 0.5:
-            factor = np.random.uniform(0.8, 1.2)
+            factor = np.random.uniform(AUGMENT_CONTRAST_RANGE[0], AUGMENT_CONTRAST_RANGE[1])
             mean = np.mean(image)
             image = np.clip((image - mean) * factor + mean, 0, 255).astype(np.uint8)
         
         # Random Gaussian noise
-        if np.random.random() > 0.7:
-            noise = np.random.normal(0, 10, image.shape)
+        if np.random.random() > (1 - AUGMENT_NOISE_PROBABILITY):
+            noise = np.random.normal(0, AUGMENT_NOISE_STD, image.shape)
             image = np.clip(image + noise, 0, 255).astype(np.uint8)
         
         return image, mask
