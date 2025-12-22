@@ -36,11 +36,6 @@
 
 ---
 
-## ⚠️ Important Notice
-
-**This is a research/educational project.** For clinical use, proper validation, regulatory approval, and medical expert supervision are required.
-
----
 
 ## 🔗 Quick Links
 
@@ -1341,6 +1336,9 @@ Special thanks to:
 
 ### Funding & Support
 This project is developed independently as an open-source contribution to the medical AI community. No external funding was received.
+
+## ⚠️ Important Notice
+**This is a research/educational project.** For clinical use, proper validation, regulatory approval, and medical expert supervision are required.
 
 ---
 
