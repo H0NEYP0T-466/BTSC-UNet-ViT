@@ -36,6 +36,12 @@
 
 ---
 
+## ⚠️ Important Notice
+
+**This is a research/educational project.** For clinical use, proper validation, regulatory approval, and medical expert supervision are required.
+
+---
+
 ## 🔗 Quick Links
 
 - [📊 Dataset & Training](#-dataset--training-details)
@@ -83,7 +89,7 @@
 
 ## Abstract
 
-Brain tumor diagnosis is a critical task in medical imaging that requires accurate detection, precise segmentation, and reliable classification. **BTSC-UNet-ViT** presents an end-to-end deep learning pipeline that combines the strengths of UNet for pixel-level segmentation and Vision Transformer (ViT) for robust classification. Our system processes MRI scans through a sophisticated preprocessing pipeline, segments tumor regions with high precision, and classifies tumors into four categories: no tumor, glioma, meningioma, and pituitary tumor.
+Brain tumor diagnosis is a critical task in medical imaging that requires accurate detection, precise segmentation, and reliable classification. **BTSC-UNet-ViT** presents an end-to-end deep learning pipeline that combines the strengths of Vision Transformer (ViT) for robust classification and UNet for precise pixel-level segmentation. Our system processes MRI scans through a sophisticated preprocessing pipeline, first classifies tumors into four categories (no tumor, glioma, meningioma, and pituitary tumor), and then conditionally performs segmentation only when a tumor is detected.
 
 The framework has been trained on **90,000+ brain MRI images** with extensive data augmentation, achieving state-of-the-art performance in both segmentation and classification tasks. The system is deployed as a full-stack web application with a FastAPI backend and React frontend, providing real-time inference and visualization capabilities.
 
@@ -91,10 +97,10 @@ The framework has been trained on **90,000+ brain MRI images** with extensive da
 
 ## Key Highlights
 
-- 🎯 **Multi-task Learning**: Combined segmentation and classification in a unified pipeline
+- 🎯 **Intelligent Pipeline**: ViT classification first, conditional segmentation only when tumor detected
 - 📊 **Large-scale Training**: Trained on 90,000+ images across 4 tumor classes
 - 🔬 **Medical-grade Preprocessing**: Advanced edge-preserving denoising and contrast enhancement
-- 🏗️ **Hybrid Architecture**: UNet for segmentation + ViT for classification
+- 🏗️ **Hybrid Architecture**: ViT for classification + UNet for conditional segmentation
 - 🚀 **Production-ready**: Full-stack web application with RESTful API
 - 📈 **High Performance**: State-of-the-art accuracy with real-time inference
 - 🔄 **Extensive Augmentation**: Random rotation, flipping, color jitter, and affine transformations
@@ -172,21 +178,34 @@ To improve model robustness and generalization, we employ comprehensive data aug
 │  Grayscale → Denoising → Contrast Enhancement → Normalization → Sharpening │
 └─────────────────────────────────┬───────────────────────────────────────────┘
                                   │
-                    ┌─────────────┴─────────────┐
-                    │                           │
-┌───────────────────▼──────────┐   ┌───────────▼────────────────┐
-│    UNet Segmentation Model   │   │  Vision Transformer (ViT)   │
-│  • 5-level Encoder-Decoder   │   │  • Pretrained on ImageNet   │
-│  • Skip Connections          │   │  • Fine-tuned on 90k MRIs   │
-│  • Binary Mask Output        │   │  • 4-class Classification   │
-│  • BCE Loss                  │   │  • Patch-based Attention    │
-└───────────────────┬──────────┘   └───────────┬────────────────┘
-                    │                           │
-                    └─────────────┬─────────────┘
+┌─────────────────────────────────▼───────────────────────────────────────────┐
+│                     Vision Transformer (ViT) Classification                 │
+│                    • Pretrained on ImageNet                                 │
+│                    • Fine-tuned on 90k MRIs                                 │
+│                    • 4-class Classification                                 │
+│                    • Patch-based Attention                                  │
+└─────────────────────────────────┬───────────────────────────────────────────┘
+                                  │
+                        ┌─────────┴─────────┐
+                        │                   │
+                    No Tumor            Tumor Type
+                  (Classification)    (glioma/meningioma/pituitary)
+                        │                   │
+                   Pipeline Ends            │
+                        │                   │
+                        │       ┌───────────▼────────────────┐
+                        │       │   UNet Segmentation Model  │
+                        │       │ • 5-level Encoder-Decoder  │
+                        │       │ • Skip Connections         │
+                        │       │ • Binary Mask Output       │
+                        │       │ • BCE Loss                 │
+                        │       └───────────┬────────────────┘
+                        │                   │
+                        └─────────┬─────────┘
                                   │
 ┌─────────────────────────────────▼───────────────────────────────────────────┐
 │                           Results Aggregation                               │
-│       Tumor Mask + Segmentation Overlay + Classification + Confidence       │
+│         Classification + Confidence + Conditional Tumor Segmentation        │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -204,25 +223,32 @@ Input MRI Scan (DICOM/PNG/JPG)
     │      ├─ Unsharp mask edge sharpening
     │      └─ Z-score normalization
     │
-    ├─► 2. UNet Segmentation
-    │      ├─ Input: 256×256 grayscale
-    │      ├─ Forward pass through encoder-decoder
-    │      ├─ Output: Binary tumor mask
-    │      └─ Overlay generation for visualization
-    │
-    ├─► 3. ViT Classification
+    ├─► 2. ViT Classification
     │      ├─ Input: 224×224 preprocessed RGB
     │      ├─ Patch embedding (16×16 patches)
     │      ├─ Transformer encoder (12 layers)
     │      ├─ Classification head
     │      └─ Output: [no_tumor, glioma, meningioma, pituitary] + confidence
     │
-    └─► 4. Results
-           ├─ Tumor presence: Yes/No
-           ├─ Tumor type: Class name
-           ├─ Confidence: Probability distribution
-           ├─ Segmentation mask: Binary mask
-           └─ Visualization: Original + Overlay + Mask
+    │      Decision Point: Is it a tumor?
+    │      │
+    │      ├─► If "no_tumor" → Pipeline Ends
+    │      │   └─ Return: Classification results only
+    │      │
+    │      └─► If tumor type detected (glioma/meningioma/pituitary) → Continue
+    │          │
+    │          ├─► 3. UNet Segmentation
+    │          │      ├─ Input: 256×256 grayscale
+    │          │      ├─ Forward pass through encoder-decoder
+    │          │      ├─ Output: Binary tumor mask
+    │          │      └─ Overlay generation for visualization
+    │          │
+    │          └─► 4. Results
+    │                 ├─ Tumor presence: Yes
+    │                 ├─ Tumor type: Class name (glioma/meningioma/pituitary)
+    │                 ├─ Confidence: Probability distribution
+    │                 ├─ Segmentation mask: Binary mask
+    │                 └─ Visualization: Original + Overlay + Mask
 ```
 
 ---
@@ -241,22 +267,7 @@ Our preprocessing pipeline is specifically designed for brain MRI images:
 - **Edge Sharpening**: Unsharp mask to enhance tumor boundaries
 - **Normalization**: Z-score normalization for consistent input distribution
 
-### 2. UNet Segmentation
-
-**Architecture Design:**
-- **Encoder**: 5 downsampling blocks with max pooling
-- **Bottleneck**: Feature compression at lowest resolution
-- **Decoder**: 5 upsampling blocks with transposed convolutions
-- **Skip Connections**: Concatenate encoder features to decoder for spatial precision
-- **Output**: Sigmoid activation for binary tumor mask
-
-**Training Strategy:**
-- Loss: Binary Cross-Entropy with Logits
-- Optimizer: Adam with learning rate decay
-- Data: BraTS dataset with expert-annotated masks
-- Augmentation: Rotation, flipping, elastic deformation
-
-### 3. Vision Transformer Classification
+### 2. Vision Transformer Classification
 
 **Model Architecture:**
 - **Base Model**: `vit_base_patch16_224` pretrained on ImageNet-21k
@@ -272,6 +283,31 @@ Our preprocessing pipeline is specifically designed for brain MRI images:
 3. Fine-tune on 90,000+ brain MRI images
 4. Apply extensive data augmentation
 5. Use class-balanced sampling for imbalanced classes
+
+**Pipeline Integration:**
+- ViT classification is performed **first** after preprocessing
+- If ViT predicts "no_tumor", the pipeline **terminates** (no segmentation needed)
+- If ViT detects a tumor type (glioma, meningioma, or pituitary), the pipeline **continues** to segmentation
+
+### 3. Conditional UNet Segmentation
+
+**Architecture Design:**
+- **Encoder**: 5 downsampling blocks with max pooling
+- **Bottleneck**: Feature compression at lowest resolution
+- **Decoder**: 5 upsampling blocks with transposed convolutions
+- **Skip Connections**: Concatenate encoder features to decoder for spatial precision
+- **Output**: Sigmoid activation for binary tumor mask
+
+**Training Strategy:**
+- Loss: Binary Cross-Entropy with Logits
+- Optimizer: Adam with learning rate decay
+- Data: BraTS dataset with expert-annotated masks
+- Augmentation: Rotation, flipping, elastic deformation
+
+**Conditional Execution:**
+- Segmentation is **only performed when a tumor is detected** by ViT classification
+- This improves efficiency by skipping unnecessary segmentation for healthy brains
+- Provides more clinically relevant workflow: classify first, then localize if needed
 
 ### 4. Deployment Architecture
 
