@@ -2,19 +2,29 @@
 
 Brain Tumor Segmentation and Classification backend using FastAPI, UNet, and Vision Transformer (ViT).
 
+## ⚠️ Important Notice
+
+**This is a research/educational project.** For clinical use, proper validation, regulatory approval, and medical expert supervision are required.
+
 ## Features
 
 - **Preprocessing Pipeline**: Denoising, contrast enhancement, normalization, sharpening
-- **UNet Segmentation**: Brain tumor segmentation with trained UNet model
-- **ViT Classification**: Fine-tuned Vision Transformer for tumor classification
+- **ViT Classification**: Fine-tuned Vision Transformer for tumor classification (performed first)
+- **Conditional UNet Segmentation**: Brain tumor segmentation performed only when tumor is detected
 - **Comprehensive Logging**: Verbose logging at every stage with structured context
 - **RESTful API**: FastAPI endpoints for all operations
 
 ## Architecture
 
 ```
-Preprocessing → UNet Segmentation → ViT Classification
+Preprocessing → ViT Classification → Conditional UNet Segmentation
+                                    (only if tumor detected)
 ```
+
+**Pipeline Flow:**
+1. Preprocessing: Image enhancement and normalization
+2. ViT Classification: Classify into 4 categories (no_tumor, glioma, meningioma, pituitary)
+3. Conditional Segmentation: If tumor detected, perform UNet segmentation; otherwise, pipeline ends
 
 ### Classes
 - `no_tumor`: No tumor detected
