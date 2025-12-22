@@ -211,7 +211,6 @@ Input MRI Scan (DICOM/PNG/JPG)
     │
     ├─► 1. Preprocessing
     │      ├─ Grayscale conversion
-    │      ├─ HD-BET brain extraction (skull stripping)
     │      ├─ Non-local means denoising
     │      ├─ Motion artifact reduction
     │      ├─ CLAHE contrast enhancement
@@ -255,7 +254,6 @@ Input MRI Scan (DICOM/PNG/JPG)
 Our preprocessing pipeline is specifically designed for brain MRI images:
 
 - **Grayscale Conversion**: Reduces computational complexity while preserving structural information
-- **HD-BET Brain Extraction**: Advanced skull-stripping to isolate brain tissue
 - **Non-Local Means Denoising**: Preserves edges while reducing noise
 - **Motion Artifact Reduction**: Minimal edge-preserving filtering
 - **CLAHE Enhancement**: Contrast Limited Adaptive Histogram Equalization for local contrast
@@ -316,28 +314,95 @@ Our preprocessing pipeline is specifically designed for brain MRI images:
 
 ## 📈 Results & Visualizations
 
-### Training Performance
+### Architecture Visualizations
 
-Our ViT model demonstrates excellent convergence and generalization:
+#### Vision Transformer (ViT) Architecture
 
 <div align="center">
-  <img src="visuals/training_curves (8).png" alt="Training Curves" width="100%">
-  <p><em>Figure 1: Training and validation metrics across epochs. The model shows stable convergence with minimal overfitting.</em></p>
+  <img src="visuals/Vit_Architecture.png" alt="ViT Architecture" width="100%">
+  <p><em>Figure 1: Vision Transformer architecture showing patch embedding, transformer encoder layers, and classification head.</em></p>
 </div>
 
-**Key Observations:**
-- 📈 Steady improvement in both training and validation accuracy
+**ViT Architecture Highlights:**
+- 🔍 Patch-based image encoding (16×16 patches)
+- 🧠 12-layer transformer encoder with multi-head attention
+- 📊 Position embeddings for spatial information
+- 🎯 Classification head for 4-class tumor detection
+
+#### UNet Architecture
+
+<div align="center">
+  <img src="visuals/Unet_Architecture.png" alt="UNet Architecture" width="100%">
+  <p><em>Figure 2: UNet architecture with encoder-decoder structure and skip connections for precise segmentation.</em></p>
+</div>
+
+**UNet Architecture Highlights:**
+- ⬇️ 5-level encoder with max pooling
+- ⬆️ 5-level decoder with transposed convolutions
+- 🔗 Skip connections preserve spatial information
+- 🎭 Binary mask output for tumor localization
+
+### Complete Pipeline Visualization
+
+<div align="center">
+  <img src="visuals/pipeline.png" alt="Complete Pipeline" width="100%">
+  <p><em>Figure 3: End-to-end pipeline from preprocessing through classification and segmentation.</em></p>
+</div>
+
+**Pipeline Components:**
+- 📥 Input processing and normalization
+- 🔬 Preprocessing with denoising and enhancement
+- 🤖 ViT classification for tumor detection
+- 🎯 Conditional UNet segmentation
+- 📊 Results visualization and metrics
+
+### Training Performance
+
+#### ViT Training Curves
+
+<div align="center">
+  <img src="visuals/training_curves_vit.png" alt="ViT Training Curves" width="100%">
+  <p><em>Figure 4: ViT training and validation metrics across epochs. Achieved 99.26% validation accuracy.</em></p>
+</div>
+
+**ViT Training Highlights:**
+- 📈 Steady improvement reaching 99.26% validation accuracy
 - 📉 Consistent decrease in loss without overfitting
-- ⚖️ Well-balanced learning curves indicating good generalization
-- ✅ Early stopping prevents overtraining
+- ⚖️ Well-balanced learning curves indicating excellent generalization
+- ✅ Early stopping at epoch 15 with best validation performance
+
+#### UNet Training Curves
+
+<div align="center">
+  <img src="visuals/training_curves_Unet.png" alt="UNet Training Curves" width="100%">
+  <p><em>Figure 5: UNet training metrics showing Dice score progression. Achieved 94.14% Dice score.</em></p>
+</div>
+
+**UNet Training Highlights:**
+- 📈 Progressive improvement in Dice score to 94.14%
+- 🎯 Validation accuracy of 99.77%
+- 💪 Robust segmentation performance across diverse tumor types
+- ✅ Stable training with consistent validation metrics
+
+### Preprocessing Pipeline
+
+<div align="center">
+  <img src="visuals/preprocessing.PNG" alt="Preprocessing Pipeline" width="100%">
+  <p><em>Figure 6: Multi-stage preprocessing showing grayscale conversion, denoising, contrast enhancement, and normalization.</em></p>
+</div>
+
+**Preprocessing Stages:**
+- 🖼️ Grayscale conversion for consistency
+- 🔍 Non-local means denoising
+- ✨ CLAHE contrast enhancement
+- 📏 Z-score normalization
+- 🎨 Edge sharpening for tumor boundaries
 
 ### Segmentation Results
 
-UNet provides precise tumor localization:
-
 <div align="center">
   <img src="visuals/segmentation.PNG" alt="Segmentation Results" width="100%">
-  <p><em>Figure 2: UNet segmentation results showing original MRI, predicted tumor mask, and overlay visualization.</em></p>
+  <p><em>Figure 7: UNet segmentation results showing original MRI, predicted tumor mask, and overlay visualization.</em></p>
 </div>
 
 **Segmentation Capabilities:**
@@ -346,17 +411,37 @@ UNet provides precise tumor localization:
 - ✅ Robust to varying tumor sizes and locations
 - ✅ Clear visualization with color-coded overlays
 
-### Validation Visualization
+### Classification Results
 
-Comprehensive validation results at epoch 100:
+<div align="center">
+  <img src="visuals/classification.PNG" alt="Classification Results" width="100%">
+  <p><em>Figure 8: ViT classification results showing predicted tumor types with confidence scores.</em></p>
+</div>
+
+**Classification Features:**
+- 🎯 High confidence predictions (99%+ accuracy)
+- 📊 Probability distribution across all classes
+- 🏷️ Clear tumor type identification
+- ✅ Reliable confidence scores
+
+### Validation Visualizations
+
+#### Early Training (Epoch 5)
+
+<div align="center">
+  <img src="visuals/val_vis_epoch_5.png" alt="Validation Results Epoch 5" width="100%">
+  <p><em>Figure 9: Early validation results at epoch 5, showing initial model performance.</em></p>
+</div>
+
+#### Final Performance (Epoch 100)
 
 <div align="center">
   <img src="visuals/val_vis_epoch_100.png" alt="Validation Results Epoch 100" width="100%">
-  <p><em>Figure 3: Validation set predictions at epoch 100, demonstrating consistent performance across all tumor classes.</em></p>
+  <p><em>Figure 10: Final validation results at epoch 100, demonstrating consistent performance across all tumor classes.</em></p>
 </div>
 
 **Validation Highlights:**
-- 🎯 High accuracy across all classes
+- 🎯 High accuracy across all classes (99%+)
 - 🔍 Correct identification of subtle tumors
 - 💯 Strong performance on edge cases
 - 📊 Balanced predictions without class bias
@@ -365,13 +450,13 @@ Comprehensive validation results at epoch 100:
 
 | Metric | UNet Segmentation | ViT Classification |
 |--------|------------------|-------------------|
-| **Accuracy** | 94.5%+ | 96.2%+ |
-| **Precision** | 92.8%+ | 95.7%+ |
-| **Recall** | 93.5%+ | 94.9%+ |
-| **F1-Score** | 93.1%+ | 95.3%+ |
+| **Accuracy** | 99.77% | 99.26% |
+| **Precision** | 94.14%+ | 99.0%+ |
+| **Recall** | 94.14%+ | 99.0%+ |
+| **F1-Score/Dice** | 94.14% | 99.0%+ |
 | **Inference Time** | ~150ms | ~80ms |
 
-*Note: Metrics evaluated on held-out validation set. Actual performance may vary based on dataset characteristics.*
+*Note: Metrics evaluated on held-out validation set. UNet Dice score represents segmentation quality, while ViT metrics represent classification performance.*
 
 ---
 
@@ -410,19 +495,13 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. **Setup HD-BET (brain extraction tool):**
-```bash
-python setup_hdbet.py
-```
-*Note: Downloads ~100MB of model parameters on first run.*
-
-5. **Configure environment (optional):**
+4. **Configure environment (optional):**
 ```bash
 cp .env.example .env
 # Edit .env with your custom paths if needed
 ```
 
-6. **Run the server:**
+5. **Run the server:**
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -464,7 +543,6 @@ Upload a brain MRI image through the web interface and watch the magic happen! �
 
 ### 🔬 Medical-Grade Processing
 - **Advanced Preprocessing**: Edge-preserving denoising, CLAHE enhancement, motion artifact reduction
-- **HD-BET Brain Extraction**: Automated skull stripping for precise brain tissue isolation
 - **Multi-stage Pipeline**: Structured workflow from raw MRI to final diagnosis
 - **Quality Assurance**: Validation at each processing stage
 
@@ -586,9 +664,16 @@ BTSC-UNet-ViT/
 │   └── assets/                       # Static assets
 │
 ├── visuals/                          # Research visualizations
-│   ├── segmentation.PNG              # Segmentation results (1920×950)
-│   ├── training_curves (8).png       # Training metrics (2234×731)
-│   └── val_vis_epoch_100.png         # Validation results (1747×2382)
+│   ├── Unet_Architecture.png         # UNet architecture diagram
+│   ├── Vit_Architecture.png          # Vision Transformer architecture diagram
+│   ├── pipeline.png                  # Complete pipeline visualization
+│   ├── preprocessing.PNG             # Preprocessing stages
+│   ├── segmentation.PNG              # Segmentation results
+│   ├── classification.PNG            # Classification results
+│   ├── training_curves_vit.png       # ViT training metrics
+│   ├── training_curves_Unet.png      # UNet training metrics
+│   ├── val_vis_epoch_5.png           # Early validation results
+│   └── val_vis_epoch_100.png         # Final validation results
 │
 ├── train_vit_colab.py                # Google Colab ViT training
 ├── train_unet_colab.py               # Google Colab UNet training
@@ -1027,7 +1112,6 @@ npm run build
 
 **Medical Imaging AI:**
 - **MONAI** 1.5.1+ - Medical Open Network for AI toolkit
-- **HD-BET** - Deep learning brain extraction tool
 - **SimpleITK** 2.3.1 - Medical image processing
 - **nibabel** 5.3.2 - Neuroimaging file I/O (DICOM, NIfTI)
 
@@ -1240,11 +1324,11 @@ We are committed to providing a welcoming and inclusive environment. Please read
 If you use BTSC-UNet-ViT in your research, please cite:
 
 ```bibtex
-@software{btsc_unet_vit_2024,
+@software{btsc_unet_vit_2025,
   title        = {BTSC-UNet-ViT: Brain Tumor Segmentation and Classification using 
                   Hybrid Deep Learning Architecture},
   author       = {BTSC-UNet-ViT Team},
-  year         = {2024},
+  year         = {2025},
   publisher    = {GitHub},
   url          = {https://github.com/H0NEYP0T-466/BTSC-UNet-ViT},
   note         = {Trained on 90,000+ brain MRI images across 4 tumor classes}
@@ -1322,7 +1406,6 @@ If you're using BTSC-UNet-ViT for academic research or would like to collaborate
 - **React**: Frontend library for building user interfaces
 
 ### Tools & Infrastructure
-- **HD-BET**: Deep learning-based brain extraction tool
 - **scikit-image**: Image processing algorithms
 - **OpenCV**: Computer vision library
 - **Hugging Face**: Model hosting and community
