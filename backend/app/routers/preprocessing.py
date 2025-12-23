@@ -3,8 +3,7 @@ Preprocessing router.
 """
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.schemas.responses import PreprocessResponse, LogContext
-from app.utils.preprocessing import run_preprocessing, to_grayscale
-from app.utils.btsc_preprocess import detect_noise_type, detect_blur, detect_motion
+from app.utils.preprocessing import preprocess_pipeline
 from app.utils.imaging import bytes_to_numpy
 from app.services.storage_service import get_storage_service
 from app.config import settings
@@ -19,17 +18,15 @@ router = APIRouter(prefix="/preprocess", tags=["preprocessing"])
 @router.post("", response_model=PreprocessResponse)
 async def preprocess_image(file: UploadFile = File(...)):
     """
-    Preprocess uploaded image with intelligent quality-focused enhancement.
+    Preprocess uploaded image with quality-focused enhancement.
     
-    Pipeline (5 stages):
+    Pipeline:
     - Converts to grayscale
-    - Conservative denoising (NLM with reduced parameters, no speckle)
-    - Minimal motion reduction (bilateral filter, NO PMA correction)
-    - Contrast enhancement (CLAHE with conservative clip limit of 1.2)
-    - Conservative sharpening (reduced parameters to avoid white noise)
-    
-    Note: PMA correction and deblurring are SKIPPED to avoid over-smoothing.
-    Speckle noise is NOT applied in inference (augmentation-only).
+    - Denoises (preserves edges)
+    - Reduces motion artifacts (minimal blur)
+    - Enhances contrast (CLAHE)
+    - Sharpens edges (recovers detail)
+    - Normalizes intensity (standardizes range)
     """
     start_time = time.time()
     
@@ -48,7 +45,7 @@ async def preprocess_image(file: UploadFile = File(...)):
         storage = get_storage_service()
         image_id = storage.generate_image_id()
         
-        logger.info("Starting intelligent preprocessing", extra={
+        logger.info("Starting preprocessing", extra={
             'image_id': image_id,
             'path': None,
             'stage': 'preprocess'
@@ -57,35 +54,30 @@ async def preprocess_image(file: UploadFile = File(...)):
         # Save original
         original_url = storage.save_upload(image, image_id)
         
-        # Preprocess with auto-detection
+        # Preprocess
         config = {
-            'auto': True,
+            'median_kernel_size': settings.MEDIAN_KERNEL_SIZE,
             'clahe_clip_limit': settings.CLAHE_CLIP_LIMIT,
-            'clahe_tile_grid': settings.CLAHE_TILE_GRID_SIZE,
-            'sharpen_amount': settings.UNSHARP_AMOUNT,
-            'sharpen_radius': settings.UNSHARP_RADIUS,
-            'sharpen_threshold': settings.SHARPEN_THRESHOLD,
-            'skip_pma': settings.SKIP_PMA_CORRECTION,
-            'skip_deblur': settings.SKIP_DEBLUR,
+            'clahe_tile_grid_size': settings.CLAHE_TILE_GRID_SIZE,
+            'unsharp_radius': settings.UNSHARP_RADIUS,
+            'unsharp_amount': settings.UNSHARP_AMOUNT,
+            'normalize_method': 'zscore',
+            'use_nlm_denoising': True,
+            'nlm_h': settings.NLM_H,
+            'preserve_detail': True
         }
         
-        preprocessed = run_preprocessing(
+        preprocessed = preprocess_pipeline(
             image, 
-            opts=config, 
+            config=config, 
             image_id=image_id
         )
         
-        # Get detection results for response (informational only)
-        grayscale = to_grayscale(image, image_id=image_id)
-        noise_info = detect_noise_type(grayscale, image_id=image_id)
-        
-        # Save the 5 required stages only
+        # Save all stages
         urls = {}
-        required_stages = ['grayscale', 'denoised', 'motion_reduced', 'contrast_enhanced', 'sharpened']
-        for stage_name in required_stages:
-            if stage_name in preprocessed:
-                rel_path = storage.save_artifact(preprocessed[stage_name], image_id, stage_name)
-                urls[stage_name] = storage.get_artifact_url(rel_path)
+        for stage_name, stage_image in preprocessed.items():
+            rel_path = storage.save_artifact(stage_image, image_id, stage_name)
+            urls[stage_name] = storage.get_artifact_url(rel_path)
         
         duration = time.time() - start_time
         
@@ -101,9 +93,9 @@ async def preprocess_image(file: UploadFile = File(...)):
             grayscale_url=urls['grayscale'],
             denoised_url=urls['denoised'],
             motion_reduced_url=urls['motion_reduced'],
-            contrast_enhanced_url=urls['contrast_enhanced'],
+            contrast_url=urls['contrast'],
             sharpened_url=urls['sharpened'],
-            noise_detected=noise_info['type'],
+            normalized_url=urls['normalized'],
             log_context=LogContext(
                 image_id=image_id,
                 duration=duration,

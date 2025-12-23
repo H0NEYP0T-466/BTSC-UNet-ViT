@@ -14,16 +14,15 @@ export function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<InferenceResponse | null>(null);
-  const [skipPreprocessing, setSkipPreprocessing] = useState(false);
 
   const handleUpload = async (file: File) => {
-    console.log('[HomePage] Starting inference for file:', file.name, 'skipPreprocessing:', skipPreprocessing);
+    console.log('[HomePage] Starting inference for file:', file.name);
     setIsLoading(true);
     setError(null);
     setResult(null);
 
     try {
-      const response = await apiClient.runInference(file, skipPreprocessing);
+      const response = await apiClient.runInference(file);
       console.log('[HomePage] Inference completed:', response);
       
       // Validate response structure
@@ -77,26 +76,6 @@ export function HomePage() {
             <div className="upload-section">
               <UploadCard onUpload={handleUpload} isLoading={isLoading} />
               
-              {/* Skip Preprocessing Toggle */}
-              <div className="preprocessing-toggle card" style={{ marginTop: '1rem', padding: '1rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={skipPreprocessing}
-                    onChange={(e) => setSkipPreprocessing(e.target.checked)}
-                    style={{ marginRight: '0.5rem', cursor: 'pointer' }}
-                    disabled={isLoading}
-                  />
-                  <span>
-                    <strong>Skip Preprocessing</strong>
-                    <br />
-                    <small style={{ color: '#666' }}>
-                      Use input image directly for ViT → (if tumor) UNet segmentation
-                    </small>
-                  </span>
-                </label>
-              </div>
-              
               {error && (
                 <div className="error-message">
                   <p className="error-text">⚠️ {error}</p>
@@ -115,20 +94,19 @@ export function HomePage() {
                   />
                 </div>
 
-                {/* Preprocessing Gallery - only shown when preprocessing was NOT skipped */}
-                {!skipPreprocessing && (
-                  <div className="result-item">
-                    <PreprocessedGallery
-                      images={{
-                        grayscale: result.preprocessing.grayscale ? apiClient.getResourceUrl(result.preprocessing.grayscale) : undefined,
-                        denoised: result.preprocessing.denoised ? apiClient.getResourceUrl(result.preprocessing.denoised) : undefined,
-                        motion_reduced: result.preprocessing.motion_reduced ? apiClient.getResourceUrl(result.preprocessing.motion_reduced) : undefined,
-                        contrast_enhanced: result.preprocessing.contrast_enhanced ? apiClient.getResourceUrl(result.preprocessing.contrast_enhanced) : undefined,
-                        sharpened: result.preprocessing.sharpened ? apiClient.getResourceUrl(result.preprocessing.sharpened) : undefined,
-                      }}
-                    />
-                  </div>
-                )}
+                {/* Preprocessing Gallery */}
+                <div className="result-item">
+                  <PreprocessedGallery
+                    images={{
+                      grayscale: apiClient.getResourceUrl(result.preprocessing.grayscale),
+                      denoised: apiClient.getResourceUrl(result.preprocessing.denoised),
+                      motion_reduced: apiClient.getResourceUrl(result.preprocessing.motion_reduced),
+                      contrast: apiClient.getResourceUrl(result.preprocessing.contrast),
+                      sharpened: apiClient.getResourceUrl(result.preprocessing.sharpened),
+                      normalized: apiClient.getResourceUrl(result.preprocessing.normalized),
+                    }}
+                  />
+                </div>
 
                 {/* Tumor Segmentation Results - UNet1 (BraTS model) */}
                 {result.tumor_segmentation && (

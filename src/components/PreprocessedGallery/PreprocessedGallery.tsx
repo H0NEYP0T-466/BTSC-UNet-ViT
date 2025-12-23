@@ -2,7 +2,7 @@ import './PreprocessedGallery.css';
 
 interface PreprocessedGalleryProps {
   images: {
-    [key: string]: string | undefined;
+    [key: string]: string;
   };
 }
 
@@ -10,19 +10,18 @@ interface Stage {
   key: string;
   label: string;
   isFinal?: boolean;
-  category?: 'conversion' | 'noise' | 'correction' | 'enhancement';
 }
 
 export function PreprocessedGallery({ images }: PreprocessedGalleryProps) {
-  const FINAL_STAGE = 'sharpened';
+  const FINAL_STAGE = 'normalized';
   
-  // 5 stages matching the new preprocessing pipeline
   const stages: Stage[] = [
-    { key: 'grayscale', label: 'Grayscale', category: 'conversion' },
-    { key: 'denoised', label: 'Denoised', category: 'enhancement' },
-    { key: 'motion_reduced', label: 'Motion Reduced', category: 'enhancement' },
-    { key: 'contrast_enhanced', label: 'Contrast Enhanced', category: 'enhancement' },
-    { key: FINAL_STAGE, label: 'Sharpened (Final)', isFinal: true, category: 'enhancement' },
+    { key: 'grayscale', label: 'Grayscale' },
+    { key: 'denoised', label: 'Denoised' },
+    { key: 'motion_reduced', label: 'Motion Reduced' },
+    { key: 'contrast', label: 'Contrast Enhanced' },
+    { key: 'sharpened', label: 'Sharpened' },
+    { key: FINAL_STAGE, label: 'Normalized (Final)', isFinal: true },
   ];
 
   // Defensive programming: check if all required images are present
@@ -31,58 +30,39 @@ export function PreprocessedGallery({ images }: PreprocessedGalleryProps) {
     console.error('[PreprocessedGallery] Missing image stages:', missingStages.map(s => s.key));
   }
 
-  // Group stages by category for better organization
-  const categoryLabels: Record<string, string> = {
-    conversion: '📷 Conversion',
-    enhancement: '✨ Enhancement & Processing',
-  };
-
-  const groupedStages = stages.reduce((acc, stage) => {
-    const cat = stage.category || 'other';
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(stage);
-    return acc;
-  }, {} as Record<string, Stage[]>);
-
   return (
     <div className="preprocessed-gallery card">
       <h3 className="gallery-title">Preprocessing Stages</h3>
-      
-      {Object.entries(groupedStages).map(([category, categoryStages]) => (
-        <div key={category} className="gallery-category">
-          <h4 className="category-title">{categoryLabels[category] || category}</h4>
-          <div className="gallery-grid">
-            {categoryStages.map((stage) => (
-              <div 
-                key={stage.key} 
-                className={`gallery-item ${stage.isFinal ? 'gallery-item-final' : ''}`}
-              >
-                <div className="gallery-image-container">
-                  {images[stage.key] ? (
-                    <img
-                      src={images[stage.key]}
-                      alt={stage.label}
-                      className="gallery-image"
-                      onError={(e) => {
-                        console.error(`[PreprocessedGallery] Failed to load image for ${stage.key}`);
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    <div className="gallery-image-placeholder">
-                      Image not available
-                    </div>
-                  )}
-                  {stage.isFinal && (
-                    <div className="final-badge">→ To Models</div>
-                  )}
+      <div className="gallery-grid">
+        {stages.map((stage) => (
+          <div 
+            key={stage.key} 
+            className={`gallery-item ${stage.isFinal ? 'gallery-item-final' : ''}`}
+          >
+            <div className="gallery-image-container">
+              {images[stage.key] ? (
+                <img
+                  src={images[stage.key]}
+                  alt={stage.label}
+                  className="gallery-image"
+                  onError={(e) => {
+                    console.error(`[PreprocessedGallery] Failed to load image for ${stage.key}`);
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="gallery-image-placeholder">
+                  Image not available
                 </div>
-                <p className="gallery-label">{stage.label}</p>
-              </div>
-            ))}
+              )}
+              {stage.isFinal && (
+                <div className="final-badge">→ To Models</div>
+              )}
+            </div>
+            <p className="gallery-label">{stage.label}</p>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

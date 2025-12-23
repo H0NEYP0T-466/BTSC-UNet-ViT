@@ -4,7 +4,7 @@ Pipeline service for orchestrating preprocessing, tumor segmentation, and classi
 import time
 from typing import Dict, Optional
 import numpy as np
-from app.utils.preprocessing import run_preprocessing
+from app.utils.preprocessing import preprocess_pipeline
 from app.models.unet.infer_unet import get_unet_inference
 from app.models.unet_tumor.infer_unet_tumor import get_unet_tumor_inference
 from app.models.vit.infer_vit import get_vit_inference
@@ -61,18 +61,17 @@ class PipelineService:
             })
             self.vit = get_vit_inference()
     
-    def run_inference(self, image: np.ndarray, skip_preprocessing: bool = False) -> Dict:
+    def run_inference(self, image: np.ndarray) -> Dict:
         """
         Run full inference pipeline.
         
-        Pipeline flow:
-        1. Intelligent Preprocessing (auto-detect noise/blur/motion and fix) - OPTIONAL
+        Pipeline flow (NEW):
+        1. Preprocessing (grayscale, denoise, contrast, sharpen, normalize)
         2. ViT Classification (classify tumor type)
         3. Conditional Tumor Segmentation (only if tumor detected)
         
         Args:
             image: Input image (RGB or grayscale)
-            skip_preprocessing: If True, skip preprocessing and use original image directly
             
         Returns:
             Dictionary with all results and artifact URLs
@@ -82,7 +81,7 @@ class PipelineService:
         # Generate image ID
         image_id = self.storage.generate_image_id()
         
-        logger.info(f"Starting inference pipeline for image {image_id} (skip_preprocessing={skip_preprocessing})", extra={
+        logger.info(f"Starting inference pipeline for image {image_id}", extra={
             'image_id': image_id,
             'path': None,
             'stage': 'pipeline_start'
@@ -91,64 +90,47 @@ class PipelineService:
         # Save original image
         original_url = self.storage.save_upload(image, image_id)
         
-        # Step 1: Intelligent Preprocessing (OPTIONAL)
-        preprocess_urls = {}
-        if skip_preprocessing:
-            logger.info("Step 1: Skipping preprocessing (user requested) - using original image directly", extra={
-                'image_id': image_id,
-                'path': None,
-                'stage': 'pipeline_preprocess_skip'
-            })
-            
-            # Use original image directly with NO preprocessing (not even resize or grayscale)
-            # Models will handle necessary format conversions internally:
-            # - ViT will convert grayscale → RGB if needed
-            # - UNet will convert RGB → grayscale if needed
-            preprocessed_image = image
-            
-            # Don't save any preprocessing artifacts when skipping
-            # This ensures no preprocessing card is shown
-        else:
-            logger.info("Step 1: Intelligent Preprocessing (auto-detection)", extra={
-                'image_id': image_id,
-                'path': None,
-                'stage': 'pipeline_preprocess'
-            })
-            
-            preprocess_config = {
-                'auto': True,  # Enable auto-detection
-                'clahe_clip_limit': settings.CLAHE_CLIP_LIMIT,
-                'clahe_tile_grid': settings.CLAHE_TILE_GRID_SIZE,
-                'sharpen_amount': settings.UNSHARP_AMOUNT,
-                'sharpen_radius': settings.UNSHARP_RADIUS,
-                'sharpen_threshold': settings.SHARPEN_THRESHOLD,
-                'skip_pma': settings.SKIP_PMA_CORRECTION,
-                'skip_deblur': settings.SKIP_DEBLUR,
-            }
-            
-            preprocessed = run_preprocessing(
-                image, 
-                opts=preprocess_config, 
-                image_id=image_id
-            )
-            
-            # Save preprocessing artifacts (only numpy arrays, skip nested dicts)
-            for stage_name, stage_image in preprocessed.items():
-                # Skip nested dictionaries for defensive programming
-                if isinstance(stage_image, dict):
-                    continue
-                url = self.storage.save_artifact(stage_image, image_id, stage_name)
-                preprocess_urls[stage_name] = self.storage.get_artifact_url(url)
-            
-            preprocessed_image = preprocessed['sharpened']
-            
-            logger.info("Preprocessing completed, passing to next layer: ViT classification", extra={
-                'image_id': image_id,
-                'path': None,
-                'stage': 'pipeline_preprocess'
-            })
+        # Step 1: Preprocessing
+        logger.info("Step 1: Preprocessing", extra={
+            'image_id': image_id,
+            'path': None,
+            'stage': 'pipeline_preprocess'
+        })
         
-        # Step 2: ViT Classification
+        preprocess_config = {
+            'median_kernel_size': settings.MEDIAN_KERNEL_SIZE,
+            'clahe_clip_limit': settings.CLAHE_CLIP_LIMIT,
+            'clahe_tile_grid_size': settings.CLAHE_TILE_GRID_SIZE,
+            'unsharp_radius': settings.UNSHARP_RADIUS,
+            'unsharp_amount': settings.UNSHARP_AMOUNT,
+            'preserve_detail': settings.MOTION_PRESERVE_DETAIL,
+            'normalize_method': 'zscore',
+            'use_nlm_denoising': True,
+            'nlm_h': settings.NLM_H
+        }
+        
+        preprocessed = preprocess_pipeline(
+            image, 
+            config=preprocess_config, 
+            image_id=image_id
+        )
+        
+        # Save preprocessing artifacts (only numpy arrays, skip nested dicts)
+        preprocess_urls = {}
+        for stage_name, stage_image in preprocessed.items():
+            # Skip nested dictionaries for defensive programming
+            if isinstance(stage_image, dict):
+                continue
+            url = self.storage.save_artifact(stage_image, image_id, stage_name)
+            preprocess_urls[stage_name] = self.storage.get_artifact_url(url)
+        
+        logger.info("Preprocessing completed, passing to next layer: ViT classification", extra={
+            'image_id': image_id,
+            'path': None,
+            'stage': 'pipeline_preprocess'
+        })
+        
+        # Step 2: ViT Classification (NEW ORDER)
         logger.info("Step 2: ViT classification", extra={
             'image_id': image_id,
             'path': None,
@@ -159,7 +141,7 @@ class PipelineService:
         
         # Use preprocessed image for classification
         classification_results = self.vit.classify(
-            preprocessed_image,
+            preprocessed['normalized'],
             image_id=image_id
         )
         
@@ -202,7 +184,7 @@ class PipelineService:
             )
             
             tumor_segmentation_results = self.tumor_unet.segment_image(
-                preprocessed_image,
+                preprocessed['normalized'],
                 image_id=image_id
             )
             
@@ -230,7 +212,7 @@ class PipelineService:
             )
             
             tumor_segmentation2_results = self.tumor_unet2.segment_image(
-                preprocessed_image,
+                preprocessed['normalized'],
                 image_id=image_id
             )
             

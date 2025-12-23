@@ -94,13 +94,10 @@ The framework has been trained on **90,000+ brain MRI images** with extensive da
 
 - 🎯 **Intelligent Pipeline**: ViT classification first, conditional segmentation only when tumor detected
 - 📊 **Large-scale Training**: Trained on 90,000+ images across 4 tumor classes
-- 🔬 **Robust Preprocessing**: 8-stage clinically-aware pipeline with auto-detection of noise, blur, and motion artifacts
-- 🧹 **Advanced Denoising**: Salt & pepper (adaptive median), Gaussian (NLM), and speckle (wavelet) noise removal
-- 🔍 **Motion Correction**: RL/Wiener deconvolution with estimated motion PSF for patient motion artifacts
-- ✨ **Artifact-Free Enhancement**: Conservative CLAHE and noise-aware sharpening without white speckles or halos
+- 🔬 **Medical-grade Preprocessing**: Advanced edge-preserving denoising and contrast enhancement
 - 🏗️ **Hybrid Architecture**: ViT for classification + UNet for conditional segmentation
 - 🚀 **Production-ready**: Full-stack web application with RESTful API
-- 📈 **High Performance**: State-of-the-art accuracy with sub-second preprocessing (<0.5s for 512×512)
+- 📈 **High Performance**: State-of-the-art accuracy with real-time inference
 - 🔄 **Extensive Augmentation**: Random rotation, flipping, color jitter, and affine transformations
 - 💻 **GPU Optimized**: Mixed precision training and efficient inference
 

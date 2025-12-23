@@ -11,14 +11,12 @@ export interface LogContext {
 export interface PreprocessResponse {
   image_id: string;
   original_url: string;
-  // 5 preprocessing stages (in order)
   grayscale_url: string;
   denoised_url: string;
   motion_reduced_url: string;
-  contrast_enhanced_url: string;
-  sharpened_url: string;  // Final output
-  // Detection results (informational)
-  noise_detected?: string;
+  contrast_url: string;
+  sharpened_url: string;
+  normalized_url: string;
   log_context: LogContext;
 }
 
@@ -44,11 +42,12 @@ export interface InferenceResponse {
   image_id: string;
   original_url: string;
   preprocessing: {
-    grayscale?: string;
-    denoised?: string;
-    motion_reduced?: string;
-    contrast_enhanced?: string;
-    sharpened?: string;  // Final output
+    grayscale: string;
+    denoised: string;
+    motion_reduced: string;
+    contrast: string;
+    sharpened: string;
+    normalized: string;
   };
   tumor_segmentation?: {
     mask: string;

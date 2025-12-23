@@ -16,14 +16,12 @@ class PreprocessResponse(BaseModel):
     """Response for preprocessing endpoint."""
     image_id: str
     original_url: str
-    # 5 preprocessing stages (in order)
     grayscale_url: str
     denoised_url: str
     motion_reduced_url: str
-    contrast_enhanced_url: str
-    sharpened_url: str  # Final output
-    # Detection results (informational)
-    noise_detected: Optional[str] = None
+    contrast_url: str
+    sharpened_url: str
+    normalized_url: str
     log_context: LogContext
 
 
