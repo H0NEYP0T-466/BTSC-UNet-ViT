@@ -99,11 +99,13 @@ export function HomePage() {
                   <PreprocessedGallery
                     images={{
                       grayscale: apiClient.getResourceUrl(result.preprocessing.grayscale),
-                      denoised: apiClient.getResourceUrl(result.preprocessing.denoised),
-                      motion_reduced: apiClient.getResourceUrl(result.preprocessing.motion_reduced),
-                      contrast: apiClient.getResourceUrl(result.preprocessing.contrast),
+                      salt_pepper_cleaned: apiClient.getResourceUrl(result.preprocessing.salt_pepper_cleaned),
+                      gaussian_denoised: apiClient.getResourceUrl(result.preprocessing.gaussian_denoised),
+                      speckle_denoised: apiClient.getResourceUrl(result.preprocessing.speckle_denoised),
+                      pma_corrected: apiClient.getResourceUrl(result.preprocessing.pma_corrected),
+                      deblurred: apiClient.getResourceUrl(result.preprocessing.deblurred),
+                      contrast_enhanced: apiClient.getResourceUrl(result.preprocessing.contrast_enhanced),
                       sharpened: apiClient.getResourceUrl(result.preprocessing.sharpened),
-                      normalized: apiClient.getResourceUrl(result.preprocessing.normalized),
                     }}
                   />
                 </div>
