@@ -1,7 +1,7 @@
 """
 Main FastAPI application for BTSC-UNet-ViT.
 """
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.config import settings
@@ -61,28 +61,38 @@ async def root():
 
 
 @app.post(f"{settings.API_PREFIX}/inference", response_model=InferenceResponse)
-async def run_inference(file: UploadFile = File(...)):
+async def run_inference(
+    file: UploadFile = File(...),
+    skip_preprocessing: bool = Form(False)
+):
     """
-    Run full inference pipeline: preprocessing -> tumor segmentation -> classification.
+    Run full inference pipeline: preprocessing -> ViT classification -> (if tumor) UNet segmentation.
     
     This is the main endpoint that orchestrates all stages.
+    
+    Args:
+        file: Uploaded image file
+        skip_preprocessing: If True, skip preprocessing and use input image directly for ViT -> UNet
     """
     start_time = time.time()
     
-    logger.info(f"Received full inference request: filename={file.filename}", extra={
-        'image_id': None,
-        'path': file.filename,
-        'stage': 'inference_request'
-    })
+    logger.info(
+        f"Received full inference request: filename={file.filename}, skip_preprocessing={skip_preprocessing}",
+        extra={
+            'image_id': None,
+            'path': file.filename,
+            'stage': 'inference_request'
+        }
+    )
     
     try:
         # Read image bytes
         contents = await file.read()
         image = bytes_to_numpy(contents)
         
-        # Run pipeline
+        # Run pipeline with skip_preprocessing flag
         pipeline = get_pipeline_service()
-        result = pipeline.run_inference(image)
+        result = pipeline.run_inference(image, skip_preprocessing=skip_preprocessing)
         
         duration = time.time() - start_time
         

@@ -61,17 +61,18 @@ class PipelineService:
             })
             self.vit = get_vit_inference()
     
-    def run_inference(self, image: np.ndarray) -> Dict:
+    def run_inference(self, image: np.ndarray, skip_preprocessing: bool = False) -> Dict:
         """
         Run full inference pipeline.
         
         Pipeline flow:
-        1. Intelligent Preprocessing (auto-detect noise/blur/motion and fix)
+        1. Intelligent Preprocessing (auto-detect noise/blur/motion and fix) - OPTIONAL
         2. ViT Classification (classify tumor type)
         3. Conditional Tumor Segmentation (only if tumor detected)
         
         Args:
             image: Input image (RGB or grayscale)
+            skip_preprocessing: If True, skip preprocessing and use original image directly
             
         Returns:
             Dictionary with all results and artifact URLs
@@ -81,7 +82,7 @@ class PipelineService:
         # Generate image ID
         image_id = self.storage.generate_image_id()
         
-        logger.info(f"Starting inference pipeline for image {image_id}", extra={
+        logger.info(f"Starting inference pipeline for image {image_id} (skip_preprocessing={skip_preprocessing})", extra={
             'image_id': image_id,
             'path': None,
             'stage': 'pipeline_start'
@@ -90,41 +91,63 @@ class PipelineService:
         # Save original image
         original_url = self.storage.save_upload(image, image_id)
         
-        # Step 1: Intelligent Preprocessing
-        logger.info("Step 1: Intelligent Preprocessing (auto-detection)", extra={
-            'image_id': image_id,
-            'path': None,
-            'stage': 'pipeline_preprocess'
-        })
-        
-        preprocess_config = {
-            'auto': True,  # Enable auto-detection
-            'clahe_clip_limit': settings.CLAHE_CLIP_LIMIT,
-            'clahe_tile_grid': settings.CLAHE_TILE_GRID_SIZE,
-            'sharpen_amount': settings.UNSHARP_AMOUNT,
-            'sharpen_threshold': settings.SHARPEN_THRESHOLD,
-        }
-        
-        preprocessed = run_preprocessing(
-            image, 
-            opts=preprocess_config, 
-            image_id=image_id
-        )
-        
-        # Save preprocessing artifacts (only numpy arrays, skip nested dicts)
+        # Step 1: Intelligent Preprocessing (OPTIONAL)
         preprocess_urls = {}
-        for stage_name, stage_image in preprocessed.items():
-            # Skip nested dictionaries for defensive programming
-            if isinstance(stage_image, dict):
-                continue
-            url = self.storage.save_artifact(stage_image, image_id, stage_name)
-            preprocess_urls[stage_name] = self.storage.get_artifact_url(url)
-        
-        logger.info("Preprocessing completed, passing to next layer: ViT classification", extra={
-            'image_id': image_id,
-            'path': None,
-            'stage': 'pipeline_preprocess'
-        })
+        if skip_preprocessing:
+            logger.info("Step 1: Skipping preprocessing (user requested)", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'pipeline_preprocess_skip'
+            })
+            
+            # Use original image directly - resize for consistency
+            from app.utils.preprocessing import resize_image, to_grayscale
+            resized = resize_image(image, max_size=512, image_id=image_id)
+            preprocessed_image = to_grayscale(resized, image_id=image_id)
+            
+            # Save minimal preprocessing artifacts
+            url = self.storage.save_artifact(resized, image_id, 'resized')
+            preprocess_urls['resized'] = self.storage.get_artifact_url(url)
+            url = self.storage.save_artifact(preprocessed_image, image_id, 'grayscale')
+            preprocess_urls['grayscale'] = self.storage.get_artifact_url(url)
+            preprocess_urls['sharpened'] = preprocess_urls['grayscale']  # Use grayscale as final
+        else:
+            logger.info("Step 1: Intelligent Preprocessing (auto-detection)", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'pipeline_preprocess'
+            })
+            
+            preprocess_config = {
+                'auto': True,  # Enable auto-detection
+                'max_size': 512,  # Resize to reduce memory usage
+                'clahe_clip_limit': settings.CLAHE_CLIP_LIMIT,
+                'clahe_tile_grid': settings.CLAHE_TILE_GRID_SIZE,
+                'sharpen_amount': settings.UNSHARP_AMOUNT,
+                'sharpen_threshold': settings.SHARPEN_THRESHOLD,
+            }
+            
+            preprocessed = run_preprocessing(
+                image, 
+                opts=preprocess_config, 
+                image_id=image_id
+            )
+            
+            # Save preprocessing artifacts (only numpy arrays, skip nested dicts)
+            for stage_name, stage_image in preprocessed.items():
+                # Skip nested dictionaries for defensive programming
+                if isinstance(stage_image, dict):
+                    continue
+                url = self.storage.save_artifact(stage_image, image_id, stage_name)
+                preprocess_urls[stage_name] = self.storage.get_artifact_url(url)
+            
+            preprocessed_image = preprocessed['sharpened']
+            
+            logger.info("Preprocessing completed, passing to next layer: ViT classification", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'pipeline_preprocess'
+            })
         
         # Step 2: ViT Classification
         logger.info("Step 2: ViT classification", extra={
@@ -135,9 +158,9 @@ class PipelineService:
         
         self._ensure_models_loaded()
         
-        # Use preprocessed image for classification (final sharpened output)
+        # Use preprocessed image for classification
         classification_results = self.vit.classify(
-            preprocessed['sharpened'],
+            preprocessed_image,
             image_id=image_id
         )
         
@@ -180,7 +203,7 @@ class PipelineService:
             )
             
             tumor_segmentation_results = self.tumor_unet.segment_image(
-                preprocessed['sharpened'],
+                preprocessed_image,
                 image_id=image_id
             )
             
@@ -208,7 +231,7 @@ class PipelineService:
             )
             
             tumor_segmentation2_results = self.tumor_unet2.segment_image(
-                preprocessed['sharpened'],
+                preprocessed_image,
                 image_id=image_id
             )
             

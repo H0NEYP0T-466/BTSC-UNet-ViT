@@ -51,14 +51,15 @@ export interface InferenceResponse {
   image_id: string;
   original_url: string;
   preprocessing: {
-    grayscale: string;
-    salt_pepper_cleaned: string;
-    gaussian_denoised: string;
-    speckle_denoised: string;
-    pma_corrected: string;
-    deblurred: string;
-    contrast_enhanced: string;
-    sharpened: string;  // Final output
+    resized?: string;
+    grayscale?: string;
+    salt_pepper_cleaned?: string;
+    gaussian_denoised?: string;
+    speckle_denoised?: string;
+    pma_corrected?: string;
+    deblurred?: string;
+    contrast_enhanced?: string;
+    sharpened?: string;  // Final output
   };
   tumor_segmentation?: {
     mask: string;

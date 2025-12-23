@@ -2,7 +2,7 @@ import './PreprocessedGallery.css';
 
 interface PreprocessedGalleryProps {
   images: {
-    [key: string]: string;
+    [key: string]: string | undefined;
   };
 }
 
@@ -17,6 +17,8 @@ export function PreprocessedGallery({ images }: PreprocessedGalleryProps) {
   const FINAL_STAGE = 'sharpened';
   
   const stages: Stage[] = [
+    // Resize (NEW!)
+    { key: 'resized', label: 'Resized', category: 'conversion' },
     // Conversion
     { key: 'grayscale', label: 'Grayscale', category: 'conversion' },
     // Noise removal
