@@ -127,15 +127,11 @@ def test_run_preprocessing():
     image = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
     result = run_preprocessing(image, opts={'auto': True})
     
-    # Check all expected stages are present
+    # Check all expected stages are present (5 stages)
     expected_stages = [
-        'resized',  # NEW: resizing stage
         'grayscale',
-        'salt_pepper_cleaned',
-        'gaussian_denoised',
-        'speckle_denoised',
-        'pma_corrected',
-        'deblurred',
+        'denoised',
+        'motion_reduced',
         'contrast_enhanced',
         'sharpened'
     ]
@@ -143,47 +139,45 @@ def test_run_preprocessing():
     for stage in expected_stages:
         assert stage in result, f"Missing stage: {stage}"
         assert result[stage].dtype == np.uint8
-        assert len(result[stage].shape) in [2, 3]  # Grayscale or RGB (resized can be RGB)
+        assert len(result[stage].shape) == 2  # All should be grayscale
 
 
 def test_run_preprocessing_with_salt_pepper():
-    """Test that salt & pepper noise is detected and removed."""
-    # Create image with salt & pepper noise
+    """Test that denoising is applied conservatively."""
+    # Create image with some noise
     image = np.random.randint(50, 200, (100, 100), dtype=np.uint8)
-    noise_mask = np.random.random((100, 100)) < 0.05
-    image[noise_mask] = np.random.choice([0, 255], size=np.sum(noise_mask))
+    noise = np.random.normal(0, 10, image.shape)
+    noisy_image = np.clip(image.astype(np.float32) + noise, 0, 255).astype(np.uint8)
     
-    result = run_preprocessing(image, opts={'auto': True})
+    result = run_preprocessing(noisy_image, opts={'auto': True})
     
-    # Verify salt_pepper_cleaned is different from grayscale (noise was detected)
-    assert 'salt_pepper_cleaned' in result
-    assert result['salt_pepper_cleaned'].dtype == np.uint8
+    # Verify denoised stage exists and is different from grayscale
+    assert 'denoised' in result
+    assert result['denoised'].dtype == np.uint8
 
 
 def test_enhanced_salt_pepper_removal():
-    """Test enhanced adaptive median filter for salt & pepper noise removal."""
-    from app.utils.btsc_preprocess import remove_salt_and_pepper
+    """Test conservative denoising approach."""
+    from app.utils.btsc_preprocess import denoise_gaussian_nlmeans
     
-    # Create clean image with heavy salt & pepper noise
+    # Create clean image with Gaussian noise
     image = np.full((100, 100), 128, dtype=np.uint8)
     
-    # Add 10% salt & pepper noise
-    noise_mask = np.random.random((100, 100)) < 0.1
-    image[noise_mask] = np.random.choice([0, 255], size=np.sum(noise_mask))
+    # Add 5% Gaussian noise
+    noise = np.random.normal(0, 10, image.shape)
+    noisy_image = np.clip(image.astype(np.float32) + noise, 0, 255).astype(np.uint8)
     
-    # Count noisy pixels before
-    noisy_before = np.sum((image <= 10) | (image >= 245))
+    # Apply conservative denoising
+    cleaned = denoise_gaussian_nlmeans(noisy_image, h_scale=0.6)
     
-    # Apply enhanced removal
-    cleaned = remove_salt_and_pepper(image, max_kernel=9)
-    
-    # Count noisy pixels after
-    noisy_after = np.sum((cleaned <= 10) | (cleaned >= 245))
-    
-    # Should remove at least 90% of noise
-    assert noisy_after < noisy_before * 0.1, f"Noise removal ineffective: {noisy_before} -> {noisy_after}"
+    # Should be smoother but not over-smoothed
     assert cleaned.dtype == np.uint8
     assert cleaned.shape == image.shape
+    
+    # Check that noise variance is reduced
+    noise_var_before = np.var(noisy_image.astype(np.float32) - image.astype(np.float32))
+    noise_var_after = np.var(cleaned.astype(np.float32) - image.astype(np.float32))
+    assert noise_var_after < noise_var_before
 
 
 def test_run_preprocessing_conservative_parameters():
@@ -193,8 +187,9 @@ def test_run_preprocessing_conservative_parameters():
     
     result = run_preprocessing(image, opts={
         'auto': True,
-        'clahe_clip_limit': 1.5,
-        'sharpen_amount': 0.8
+        'clahe_clip_limit': 1.2,
+        'sharpen_amount': 0.3,
+        'sharpen_threshold': 10
     })
     
     # Check that final sharpened output doesn't have extreme values
@@ -207,4 +202,24 @@ def test_run_preprocessing_conservative_parameters():
     total_pixels = sharpened.size
     assert (white_pixels + black_pixels) / total_pixels < 0.05, \
         "Too many extreme pixels - possible over-processing"
+
+
+def test_pma_and_deblur_skipped():
+    """Test that PMA correction and deblurring are skipped in the new pipeline."""
+    image = np.random.randint(50, 200, (100, 100, 3), dtype=np.uint8)
+    result = run_preprocessing(image, opts={'auto': True})
+    
+    # These stages should NOT be present
+    assert 'pma_corrected' not in result, "PMA correction should be skipped"
+    assert 'deblurred' not in result, "Deblurring should be skipped"
+    assert 'salt_pepper_cleaned' not in result, "Salt & pepper stage should be skipped"
+    assert 'gaussian_denoised' not in result, "Separate Gaussian stage should be skipped"
+    assert 'speckle_denoised' not in result, "Speckle stage should be skipped"
+    
+    # Only the 5 required stages should be present
+    assert 'grayscale' in result
+    assert 'denoised' in result
+    assert 'motion_reduced' in result
+    assert 'contrast_enhanced' in result
+    assert 'sharpened' in result
 

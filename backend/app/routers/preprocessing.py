@@ -21,17 +21,15 @@ async def preprocess_image(file: UploadFile = File(...)):
     """
     Preprocess uploaded image with intelligent quality-focused enhancement.
     
-    Pipeline with auto-detection:
+    Pipeline (5 stages):
     - Converts to grayscale
-    - Detects and removes Salt & Pepper noise (median filter)
-    - Detects and removes Gaussian noise (NLM denoising)
-    - Detects and removes Speckle noise (wavelet denoising)
-    - Detects and corrects Patient Motion Artifacts (PMA)
-    - Detects and corrects blur (Wiener/USM deconvolution)
-    - Enhances contrast (CLAHE with conservative parameters)
-    - Sharpens edges (noise-aware unsharp masking)
+    - Conservative denoising (NLM with reduced parameters, no speckle)
+    - Minimal motion reduction (bilateral filter, NO PMA correction)
+    - Contrast enhancement (CLAHE with conservative clip limit of 1.2)
+    - Conservative sharpening (reduced parameters to avoid white noise)
     
-    Only applies corrections when issues are detected to avoid over-processing.
+    Note: PMA correction and deblurring are SKIPPED to avoid over-smoothing.
+    Speckle noise is NOT applied in inference (augmentation-only).
     """
     start_time = time.time()
     
@@ -65,7 +63,10 @@ async def preprocess_image(file: UploadFile = File(...)):
             'clahe_clip_limit': settings.CLAHE_CLIP_LIMIT,
             'clahe_tile_grid': settings.CLAHE_TILE_GRID_SIZE,
             'sharpen_amount': settings.UNSHARP_AMOUNT,
+            'sharpen_radius': settings.UNSHARP_RADIUS,
             'sharpen_threshold': settings.SHARPEN_THRESHOLD,
+            'skip_pma': settings.SKIP_PMA_CORRECTION,
+            'skip_deblur': settings.SKIP_DEBLUR,
         }
         
         preprocessed = run_preprocessing(
@@ -74,17 +75,17 @@ async def preprocess_image(file: UploadFile = File(...)):
             image_id=image_id
         )
         
-        # Get detection results for response
+        # Get detection results for response (informational only)
         grayscale = to_grayscale(image, image_id=image_id)
         noise_info = detect_noise_type(grayscale, image_id=image_id)
-        blur_info = detect_blur(grayscale, image_id=image_id)
-        motion_info = detect_motion(grayscale, image_id=image_id)
         
-        # Save all stages
+        # Save the 5 required stages only
         urls = {}
-        for stage_name, stage_image in preprocessed.items():
-            rel_path = storage.save_artifact(stage_image, image_id, stage_name)
-            urls[stage_name] = storage.get_artifact_url(rel_path)
+        required_stages = ['grayscale', 'denoised', 'motion_reduced', 'contrast_enhanced', 'sharpened']
+        for stage_name in required_stages:
+            if stage_name in preprocessed:
+                rel_path = storage.save_artifact(preprocessed[stage_name], image_id, stage_name)
+                urls[stage_name] = storage.get_artifact_url(rel_path)
         
         duration = time.time() - start_time
         
@@ -98,16 +99,11 @@ async def preprocess_image(file: UploadFile = File(...)):
             image_id=image_id,
             original_url=storage.get_artifact_url(original_url),
             grayscale_url=urls['grayscale'],
-            salt_pepper_cleaned_url=urls['salt_pepper_cleaned'],
-            gaussian_denoised_url=urls['gaussian_denoised'],
-            speckle_denoised_url=urls['speckle_denoised'],
-            pma_corrected_url=urls['pma_corrected'],
-            deblurred_url=urls['deblurred'],
+            denoised_url=urls['denoised'],
+            motion_reduced_url=urls['motion_reduced'],
             contrast_enhanced_url=urls['contrast_enhanced'],
             sharpened_url=urls['sharpened'],
             noise_detected=noise_info['type'],
-            blur_detected=blur_info['is_blurred'],
-            motion_detected=motion_info['has_motion'],
             log_context=LogContext(
                 image_id=image_id,
                 duration=duration,

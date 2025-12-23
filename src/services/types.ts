@@ -11,21 +11,14 @@ export interface LogContext {
 export interface PreprocessResponse {
   image_id: string;
   original_url: string;
+  // 5 preprocessing stages (in order)
   grayscale_url: string;
-  // Noise removal stages
-  salt_pepper_cleaned_url: string;
-  gaussian_denoised_url: string;
-  speckle_denoised_url: string;
-  // Motion and blur correction stages
-  pma_corrected_url: string;
-  deblurred_url: string;
-  // Enhancement stages
+  denoised_url: string;
+  motion_reduced_url: string;
   contrast_enhanced_url: string;
   sharpened_url: string;  // Final output
-  // Detection results
+  // Detection results (informational)
   noise_detected?: string;
-  blur_detected?: boolean;
-  motion_detected?: boolean;
   log_context: LogContext;
 }
 
@@ -51,13 +44,9 @@ export interface InferenceResponse {
   image_id: string;
   original_url: string;
   preprocessing: {
-    resized?: string;
     grayscale?: string;
-    salt_pepper_cleaned?: string;
-    gaussian_denoised?: string;
-    speckle_denoised?: string;
-    pma_corrected?: string;
-    deblurred?: string;
+    denoised?: string;
+    motion_reduced?: string;
     contrast_enhanced?: string;
     sharpened?: string;  // Final output
   };
