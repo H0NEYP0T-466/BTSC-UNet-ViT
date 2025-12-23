@@ -71,9 +71,8 @@ def test_skip_preprocessing_parameter():
         
         # Verify no preprocessing was done - raw image passed directly
         assert 'preprocessing' in result
-        # With skip preprocessing, should only have normalized (1 stage - raw image)
-        assert len(result['preprocessing']) == 1
-        assert 'normalized' in result['preprocessing']
+        # With skip preprocessing, should have no preprocessing stages (empty dict)
+        assert len(result['preprocessing']) == 0
 
 
 def test_config_values_reduced():

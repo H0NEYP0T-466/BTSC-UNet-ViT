@@ -47,7 +47,7 @@ export interface InferenceResponse {
     motion_reduced?: string;
     contrast?: string;
     sharpened?: string;
-    normalized: string;
+    normalized?: string;
   };
   tumor_segmentation?: {
     mask: string;

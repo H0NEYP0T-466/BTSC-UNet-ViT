@@ -94,19 +94,21 @@ export function HomePage() {
                   />
                 </div>
 
-                {/* Preprocessing Gallery */}
-                <div className="result-item">
-                  <PreprocessedGallery
-                    images={{
-                      grayscale: result.preprocessing.grayscale ? apiClient.getResourceUrl(result.preprocessing.grayscale) : undefined,
-                      denoised: result.preprocessing.denoised ? apiClient.getResourceUrl(result.preprocessing.denoised) : undefined,
-                      motion_reduced: result.preprocessing.motion_reduced ? apiClient.getResourceUrl(result.preprocessing.motion_reduced) : undefined,
-                      contrast: result.preprocessing.contrast ? apiClient.getResourceUrl(result.preprocessing.contrast) : undefined,
-                      sharpened: result.preprocessing.sharpened ? apiClient.getResourceUrl(result.preprocessing.sharpened) : undefined,
-                      normalized: apiClient.getResourceUrl(result.preprocessing.normalized),
-                    }}
-                  />
-                </div>
+                {/* Preprocessing Gallery - Only show if preprocessing was done */}
+                {Object.keys(result.preprocessing).length > 0 && (
+                  <div className="result-item">
+                    <PreprocessedGallery
+                      images={{
+                        grayscale: result.preprocessing.grayscale ? apiClient.getResourceUrl(result.preprocessing.grayscale) : undefined,
+                        denoised: result.preprocessing.denoised ? apiClient.getResourceUrl(result.preprocessing.denoised) : undefined,
+                        motion_reduced: result.preprocessing.motion_reduced ? apiClient.getResourceUrl(result.preprocessing.motion_reduced) : undefined,
+                        contrast: result.preprocessing.contrast ? apiClient.getResourceUrl(result.preprocessing.contrast) : undefined,
+                        sharpened: result.preprocessing.sharpened ? apiClient.getResourceUrl(result.preprocessing.sharpened) : undefined,
+                        normalized: apiClient.getResourceUrl(result.preprocessing.normalized!),
+                      }}
+                    />
+                  </div>
+                )}
 
                 {/* Tumor Segmentation Results - UNet1 (BraTS model) */}
                 {result.tumor_segmentation && (
