@@ -554,33 +554,39 @@ def run_preprocessing(
     
     This pipeline detects and corrects specific image quality issues:
     - Image size: Resizes large images to reduce memory usage
-    - Noise: Salt & Pepper, Gaussian, Speckle
-    - Blur: Gaussian, Bilateral, Median
-    - Motion: Patient Motion Artifacts (PMA)
+    - Noise: Gaussian (via conservative NLM denoising)
+    - Motion: Minimal edge-preserving bilateral filter (no PMA correction)
     
-    Only applies corrections when issues are detected to avoid
-    over-processing and quality degradation.
+    Pipeline stages:
+    1. Grayscale conversion
+    2. Conservative denoising (NLM with reduced parameters)
+    3. Motion reduction (minimal bilateral filter, preserves detail)
+    4. Contrast enhancement (CLAHE with conservative clip limit)
+    5. Sharpening (conservative unsharp mask)
+    
+    Note: PMA correction and deblurring are SKIPPED in inference to avoid
+    over-smoothing and preserve lesion edges. Speckle noise removal is also
+    SKIPPED (speckle noise is for data augmentation only, not inference).
     
     Args:
         image: Input image (RGB or grayscale)
         opts: Options dict:
             - auto: bool - Auto-detect and apply corrections (default: True)
             - max_size: int - Maximum image dimension in pixels (default: 512)
-            - clahe_clip_limit: float - CLAHE clip limit (default: 1.5, reduced from 2.0)
+            - clahe_clip_limit: float - CLAHE clip limit (default: 1.2)
             - clahe_tile_grid: tuple - CLAHE tile grid (default: (8, 8))
-            - sharpen_amount: float - Sharpening strength (default: 0.8, reduced from 1.2)
-            - sharpen_threshold: float - Sharpening threshold (default: 0.02)
+            - sharpen_amount: float - Sharpening strength (default: 0.3)
+            - sharpen_radius: float - Sharpening radius (default: 0.5)
+            - sharpen_threshold: float - Sharpening threshold (default: 10)
+            - skip_pma: bool - Skip PMA correction (default: True)
+            - skip_deblur: bool - Skip deblurring (default: True)
         image_id: Image identifier for logging
         
     Returns:
-        Dictionary with all preprocessing stages:
-        - resized: Resized image (if needed)
+        Dictionary with preprocessing stages:
         - grayscale: Grayscale conversion
-        - salt_pepper_cleaned: After salt & pepper removal (if detected)
-        - gaussian_denoised: After Gaussian noise removal (if detected)
-        - speckle_denoised: After speckle noise removal (if detected)
-        - deblurred: After blur correction (if detected)
-        - pma_corrected: After motion artifact correction (if detected)
+        - denoised: After conservative denoising
+        - motion_reduced: After minimal motion reduction (bilateral filter)
         - contrast_enhanced: After CLAHE enhancement
         - sharpened: After edge sharpening (final output)
     """
@@ -596,144 +602,50 @@ def run_preprocessing(
     max_size = opts.get('max_size', 512)  # Maximum image dimension
     
     # Conservative parameters to avoid white noise/over-processing
-    clahe_clip = opts.get('clahe_clip_limit', 1.5)  # Reduced from 2.0
+    clahe_clip = opts.get('clahe_clip_limit', 1.2)  # Reduced from 1.5
     clahe_grid = opts.get('clahe_tile_grid', (8, 8))
-    sharpen_amount = opts.get('sharpen_amount', 0.8)  # Reduced from 1.2
-    sharpen_threshold = opts.get('sharpen_threshold', 0.02)  # Higher threshold
+    sharpen_amount = opts.get('sharpen_amount', 0.3)  # Reduced from 0.8
+    sharpen_radius = opts.get('sharpen_radius', 0.5)  # Reduced from 1.0
+    sharpen_threshold = opts.get('sharpen_threshold', 10)  # Increased from 0.02
+    
+    # Inference-only: skip PMA and deblur to avoid over-smoothing
+    skip_pma = opts.get('skip_pma', True)
+    skip_deblur = opts.get('skip_deblur', True)
     
     results = {}
     
-    # Step 0: Resize image to reduce memory usage (NEW!)
-    resized = resize_image(image, max_size=max_size, image_id=image_id)
-    results['resized'] = resized
-    
     # Step 1: Convert to grayscale
-    grayscale = to_grayscale(resized, image_id=image_id)
+    grayscale = to_grayscale(image, image_id=image_id)
     results['grayscale'] = grayscale
     
     # Working image starts as grayscale
     current = grayscale.copy()
     
-    # Step 2: Detect and remove noise (sequential: S&P → Gaussian → Speckle)
+    # Step 2: Conservative denoising (NLM with reduced h parameter)
+    # Speckle noise removal is SKIPPED (speckle noise is for augmentation only, not inference)
     if auto_detect:
-        # Detect noise type
-        noise_info = detect_noise_type(current, image_id=image_id)
-        logger.info(f"Noise detection: type={noise_info['type']}, scores={noise_info['scores']}", extra={
+        logger.info("Applying conservative Gaussian noise removal (NLM with h=6)", extra={
             'image_id': image_id,
             'path': None,
-            'stage': 'noise_detection'
+            'stage': 'denoise'
         })
-        
-        # Salt & Pepper: Best fixed with enhanced adaptive median filter
-        if noise_info['type'] == 'salt_pepper' or noise_info['scores'].get('salt_pepper', 0) > 0.3:
-            logger.info("Applying enhanced salt & pepper removal (adaptive median filter)", extra={
-                'image_id': image_id,
-                'path': None,
-                'stage': 'salt_pepper_removal'
-            })
-            current = remove_salt_and_pepper(current, max_kernel=9, image_id=image_id)
-            results['salt_pepper_cleaned'] = current
-        else:
-            # No salt & pepper detected, pass through unchanged
-            results['salt_pepper_cleaned'] = current.copy()
-        
-        # Re-detect after S&P removal
-        noise_info = detect_noise_type(current, image_id=image_id)
-        
-        # Gaussian noise: Best fixed with NLM denoising
-        if noise_info['type'] == 'gaussian' or noise_info['scores'].get('gaussian', 0) > 0.3:
-            logger.info("Applying Gaussian noise removal (NLM)", extra={
-                'image_id': image_id,
-                'path': None,
-                'stage': 'gaussian_removal'
-            })
-            current = denoise_gaussian_nlmeans(current, h_scale=0.7, image_id=image_id)
-            results['gaussian_denoised'] = current
-        else:
-            # No Gaussian noise detected
-            results['gaussian_denoised'] = current.copy()
-        
-        # Re-detect after Gaussian removal
-        noise_info = detect_noise_type(current, image_id=image_id)
-        
-        # Speckle noise: Best fixed with wavelet denoising
-        if noise_info['type'] == 'speckle' or noise_info['scores'].get('speckle', 0) > 0.5:
-            logger.info("Applying speckle noise removal (wavelet)", extra={
-                'image_id': image_id,
-                'path': None,
-                'stage': 'speckle_removal'
-            })
-            current = denoise_speckle_wavelet(current, image_id=image_id)
-            results['speckle_denoised'] = current
-        else:
-            # No speckle noise detected
-            results['speckle_denoised'] = current.copy()
+        current = denoise_gaussian_nlmeans(current, h_scale=0.6, image_id=image_id)
+        results['denoised'] = current
     else:
-        # No auto-detection, pass through with minimal processing
-        results['salt_pepper_cleaned'] = current.copy()
-        results['gaussian_denoised'] = current.copy()
-        results['speckle_denoised'] = current.copy()
+        results['denoised'] = current.copy()
     
-    # Step 3: Detect and correct motion artifacts (PMA)
-    if auto_detect:
-        motion_info = detect_motion(current, image_id=image_id)
-        logger.info(f"Motion detection: has_motion={motion_info['has_motion']}, streak_score={motion_info['streak_score']:.3f}", extra={
-            'image_id': image_id,
-            'path': None,
-            'stage': 'motion_detection'
-        })
-        
-        if motion_info['has_motion'] or motion_info['streak_score'] > 0.15:
-            logger.info(f"Applying PMA correction (angle={motion_info['angle_estimate']}°)", extra={
-                'image_id': image_id,
-                'path': None,
-                'stage': 'pma_correction'
-            })
-            current = correct_motion_artifacts(
-                current, 
-                angle=motion_info['angle_estimate'],
-                image_id=image_id
-            )
-            results['pma_corrected'] = current
-        else:
-            # No motion artifacts detected
-            results['pma_corrected'] = current.copy()
-    else:
-        results['pma_corrected'] = current.copy()
+    # Step 3: Motion reduction (minimal bilateral filter, NO PMA correction)
+    # Bilateral filter preserves edges while reducing noise/motion artifacts
+    logger.info("Applying minimal motion reduction (bilateral filter, preserves edges)", extra={
+        'image_id': image_id,
+        'path': None,
+        'stage': 'motion_reduction'
+    })
+    # Use very light bilateral filter to preserve detail
+    current = cv2.bilateralFilter(current, 3, 30, 30)
+    results['motion_reduced'] = current
     
-    # Step 4: Detect and correct blur
-    if auto_detect:
-        blur_info = detect_blur(current, image_id=image_id)
-        logger.info(f"Blur detection: is_blurred={blur_info['is_blurred']}, blur_score={blur_info['blur_score']:.3f}, lap_var={blur_info['laplacian_var']:.1f}", extra={
-            'image_id': image_id,
-            'path': None,
-            'stage': 'blur_detection'
-        })
-        
-        if blur_info['is_blurred'] or blur_info['blur_score'] > 0.5:
-            # Use edge-aware USM for mild blur (bilateral/median), Wiener for heavy blur
-            if blur_info['blur_score'] > 0.7:
-                logger.info("Applying heavy deblur (Wiener)", extra={
-                    'image_id': image_id,
-                    'path': None,
-                    'stage': 'deblur'
-                })
-                current = deblur_gaussian_wiener(current, image_id=image_id)
-            else:
-                logger.info("Applying light deblur (edge-aware USM)", extra={
-                    'image_id': image_id,
-                    'path': None,
-                    'stage': 'deblur'
-                })
-                current = deblur_edge_aware_usm(current, image_id=image_id)
-            results['deblurred'] = current
-        else:
-            # No significant blur detected
-            results['deblurred'] = current.copy()
-    else:
-        results['deblurred'] = current.copy()
-    
-    # Step 5: Contrast enhancement (CLAHE with conservative parameters)
+    # Step 4: Contrast enhancement (CLAHE with conservative parameters)
     logger.info(f"Applying CLAHE contrast enhancement (clip={clahe_clip})", extra={
         'image_id': image_id,
         'path': None,
@@ -747,15 +659,15 @@ def run_preprocessing(
     )
     results['contrast_enhanced'] = current
     
-    # Step 6: Noise-aware sharpening (conservative)
-    logger.info(f"Applying noise-aware sharpening (amount={sharpen_amount})", extra={
+    # Step 5: Conservative sharpening (reduced parameters to avoid noise)
+    logger.info(f"Applying conservative sharpening (amount={sharpen_amount}, threshold={sharpen_threshold})", extra={
         'image_id': image_id,
         'path': None,
         'stage': 'sharpening'
     })
     current = sharpen_noise_aware(
         current,
-        radius=1.0,
+        radius=sharpen_radius,
         amount=sharpen_amount,
         threshold=sharpen_threshold,
         image_id=image_id
@@ -763,7 +675,7 @@ def run_preprocessing(
     results['sharpened'] = current
     
     duration = time.time() - start_time
-    logger.info(f"Intelligent preprocessing completed in {duration:.3f}s", extra={
+    logger.info(f"Intelligent preprocessing completed in {duration:.3f}s (PMA and deblur SKIPPED)", extra={
         'image_id': image_id,
         'path': None,
         'stage': 'preprocess_complete'

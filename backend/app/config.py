@@ -82,15 +82,18 @@ class Settings(BaseSettings):
     NUM_WORKERS: int = 2  # Reduced from 4 to 2 (per system warning)
     SEED: int = 42
 
-    # Preprocessing parameters
-    CLAHE_CLIP_LIMIT: float = 1.5  # Reduced from 2.0 to avoid white noise
+    # Preprocessing parameters (conservative to avoid white noise and over-smoothing)
+    CLAHE_CLIP_LIMIT: float = 1.2  # Reduced from 1.5 to 1.2 to prevent noise amplification
     CLAHE_TILE_GRID_SIZE: tuple = (8, 8)
     MEDIAN_KERNEL_SIZE: int = 3
-    NLM_H: int = 8  # Reduced from 10 to 8 for less blur
-    UNSHARP_RADIUS: float = 1.0  # For noise-aware sharpening
-    UNSHARP_AMOUNT: float = 0.8  # Conservative to avoid white noise
-    SHARPEN_THRESHOLD: float = 0.02  # Higher threshold to avoid sharpening noise
+    NLM_H: int = 6  # Reduced from 8 to 6 for minimal blur while preserving edges
+    UNSHARP_RADIUS: float = 0.5  # Reduced from 1.0 for gentler sharpening
+    UNSHARP_AMOUNT: float = 0.3  # Reduced from 0.8 to prevent noise amplification
+    SHARPEN_THRESHOLD: float = 10  # Increased from 0.02 to prevent sharpening noise
     MOTION_PRESERVE_DETAIL: bool = True  # Use minimal edge-preserving bilateral filter
+    # Inference-only flags
+    SKIP_PMA_CORRECTION: bool = True  # Skip PMA correction in inference to avoid over-smoothing
+    SKIP_DEBLUR: bool = True  # Skip deblurring in inference to preserve detail
     
     # Segmentation post-processing parameters
     SEGMENTATION_MIN_AREA: int = 100  # Minimum area for connected components (pixels)

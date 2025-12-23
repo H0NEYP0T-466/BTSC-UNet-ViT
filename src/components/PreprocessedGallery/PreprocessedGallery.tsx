@@ -16,19 +16,11 @@ interface Stage {
 export function PreprocessedGallery({ images }: PreprocessedGalleryProps) {
   const FINAL_STAGE = 'sharpened';
   
+  // 5 stages matching the new preprocessing pipeline
   const stages: Stage[] = [
-    // Resize (NEW!)
-    { key: 'resized', label: 'Resized', category: 'conversion' },
-    // Conversion
     { key: 'grayscale', label: 'Grayscale', category: 'conversion' },
-    // Noise removal
-    { key: 'salt_pepper_cleaned', label: 'Salt & Pepper Cleaned', category: 'noise' },
-    { key: 'gaussian_denoised', label: 'Gaussian Denoised', category: 'noise' },
-    { key: 'speckle_denoised', label: 'Speckle Denoised', category: 'noise' },
-    // Motion and blur correction
-    { key: 'pma_corrected', label: 'PMA Corrected', category: 'correction' },
-    { key: 'deblurred', label: 'Deblurred', category: 'correction' },
-    // Enhancement
+    { key: 'denoised', label: 'Denoised', category: 'enhancement' },
+    { key: 'motion_reduced', label: 'Motion Reduced', category: 'enhancement' },
     { key: 'contrast_enhanced', label: 'Contrast Enhanced', category: 'enhancement' },
     { key: FINAL_STAGE, label: 'Sharpened (Final)', isFinal: true, category: 'enhancement' },
   ];
@@ -42,9 +34,7 @@ export function PreprocessedGallery({ images }: PreprocessedGalleryProps) {
   // Group stages by category for better organization
   const categoryLabels: Record<string, string> = {
     conversion: '📷 Conversion',
-    noise: '🔇 Noise Removal',
-    correction: '🔧 Blur & Motion Correction',
-    enhancement: '✨ Enhancement',
+    enhancement: '✨ Enhancement & Processing',
   };
 
   const groupedStages = stages.reduce((acc, stage) => {

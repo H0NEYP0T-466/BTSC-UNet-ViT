@@ -121,11 +121,8 @@ export function HomePage() {
                     <PreprocessedGallery
                       images={{
                         grayscale: result.preprocessing.grayscale ? apiClient.getResourceUrl(result.preprocessing.grayscale) : undefined,
-                        salt_pepper_cleaned: result.preprocessing.salt_pepper_cleaned ? apiClient.getResourceUrl(result.preprocessing.salt_pepper_cleaned) : undefined,
-                        gaussian_denoised: result.preprocessing.gaussian_denoised ? apiClient.getResourceUrl(result.preprocessing.gaussian_denoised) : undefined,
-                        speckle_denoised: result.preprocessing.speckle_denoised ? apiClient.getResourceUrl(result.preprocessing.speckle_denoised) : undefined,
-                        pma_corrected: result.preprocessing.pma_corrected ? apiClient.getResourceUrl(result.preprocessing.pma_corrected) : undefined,
-                        deblurred: result.preprocessing.deblurred ? apiClient.getResourceUrl(result.preprocessing.deblurred) : undefined,
+                        denoised: result.preprocessing.denoised ? apiClient.getResourceUrl(result.preprocessing.denoised) : undefined,
+                        motion_reduced: result.preprocessing.motion_reduced ? apiClient.getResourceUrl(result.preprocessing.motion_reduced) : undefined,
                         contrast_enhanced: result.preprocessing.contrast_enhanced ? apiClient.getResourceUrl(result.preprocessing.contrast_enhanced) : undefined,
                         sharpened: result.preprocessing.sharpened ? apiClient.getResourceUrl(result.preprocessing.sharpened) : undefined,
                       }}

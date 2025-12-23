@@ -345,10 +345,9 @@ def test_full_pipeline_integration(clean_image):
     # Run full pipeline
     result = run_preprocessing(noisy, opts={'auto': True})
     
-    # Check all stages are present
+    # Check the 5 required stages are present
     expected_stages = [
-        'grayscale', 'salt_pepper_cleaned', 'gaussian_denoised',
-        'speckle_denoised', 'pma_corrected', 'deblurred',
+        'grayscale', 'denoised', 'motion_reduced',
         'contrast_enhanced', 'sharpened'
     ]
     
@@ -356,6 +355,10 @@ def test_full_pipeline_integration(clean_image):
         assert stage in result, f"Missing stage: {stage}"
         assert result[stage].dtype == np.uint8
         assert result[stage].shape == noisy.shape or result[stage].shape == (noisy.shape[0], noisy.shape[1])
+    
+    # Verify PMA and deblur stages are NOT present
+    assert 'pma_corrected' not in result, "PMA correction should be skipped"
+    assert 'deblurred' not in result, "Deblurring should be skipped"
 
 
 if __name__ == '__main__':
