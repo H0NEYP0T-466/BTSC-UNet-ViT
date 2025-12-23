@@ -100,12 +100,8 @@ class PipelineService:
             })
             
             # No preprocessing: pass raw image directly to ViT
-            # Save the original image as 'normalized' for consistency with API response
-            preprocess_urls = {
-                'normalized': self.storage.get_artifact_url(
-                    self.storage.save_artifact(image, image_id, 'normalized')
-                )
-            }
+            # Return empty preprocessing dict - no display needed
+            preprocess_urls = {}
             
             # Use original image as the final preprocessed image
             preprocessed_image = image
