@@ -115,21 +115,23 @@ export function HomePage() {
                   />
                 </div>
 
-                {/* Preprocessing Gallery */}
-                <div className="result-item">
-                  <PreprocessedGallery
-                    images={{
-                      grayscale: result.preprocessing.grayscale ? apiClient.getResourceUrl(result.preprocessing.grayscale) : undefined,
-                      salt_pepper_cleaned: result.preprocessing.salt_pepper_cleaned ? apiClient.getResourceUrl(result.preprocessing.salt_pepper_cleaned) : undefined,
-                      gaussian_denoised: result.preprocessing.gaussian_denoised ? apiClient.getResourceUrl(result.preprocessing.gaussian_denoised) : undefined,
-                      speckle_denoised: result.preprocessing.speckle_denoised ? apiClient.getResourceUrl(result.preprocessing.speckle_denoised) : undefined,
-                      pma_corrected: result.preprocessing.pma_corrected ? apiClient.getResourceUrl(result.preprocessing.pma_corrected) : undefined,
-                      deblurred: result.preprocessing.deblurred ? apiClient.getResourceUrl(result.preprocessing.deblurred) : undefined,
-                      contrast_enhanced: result.preprocessing.contrast_enhanced ? apiClient.getResourceUrl(result.preprocessing.contrast_enhanced) : undefined,
-                      sharpened: result.preprocessing.sharpened ? apiClient.getResourceUrl(result.preprocessing.sharpened) : undefined,
-                    }}
-                  />
-                </div>
+                {/* Preprocessing Gallery - only shown when preprocessing was NOT skipped */}
+                {!skipPreprocessing && (
+                  <div className="result-item">
+                    <PreprocessedGallery
+                      images={{
+                        grayscale: result.preprocessing.grayscale ? apiClient.getResourceUrl(result.preprocessing.grayscale) : undefined,
+                        salt_pepper_cleaned: result.preprocessing.salt_pepper_cleaned ? apiClient.getResourceUrl(result.preprocessing.salt_pepper_cleaned) : undefined,
+                        gaussian_denoised: result.preprocessing.gaussian_denoised ? apiClient.getResourceUrl(result.preprocessing.gaussian_denoised) : undefined,
+                        speckle_denoised: result.preprocessing.speckle_denoised ? apiClient.getResourceUrl(result.preprocessing.speckle_denoised) : undefined,
+                        pma_corrected: result.preprocessing.pma_corrected ? apiClient.getResourceUrl(result.preprocessing.pma_corrected) : undefined,
+                        deblurred: result.preprocessing.deblurred ? apiClient.getResourceUrl(result.preprocessing.deblurred) : undefined,
+                        contrast_enhanced: result.preprocessing.contrast_enhanced ? apiClient.getResourceUrl(result.preprocessing.contrast_enhanced) : undefined,
+                        sharpened: result.preprocessing.sharpened ? apiClient.getResourceUrl(result.preprocessing.sharpened) : undefined,
+                      }}
+                    />
+                  </div>
+                )}
 
                 {/* Tumor Segmentation Results - UNet1 (BraTS model) */}
                 {result.tumor_segmentation && (

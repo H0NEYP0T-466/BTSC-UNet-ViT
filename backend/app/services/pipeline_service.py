@@ -94,23 +94,17 @@ class PipelineService:
         # Step 1: Intelligent Preprocessing (OPTIONAL)
         preprocess_urls = {}
         if skip_preprocessing:
-            logger.info("Step 1: Skipping preprocessing (user requested)", extra={
+            logger.info("Step 1: Skipping preprocessing (user requested) - using original image directly", extra={
                 'image_id': image_id,
                 'path': None,
                 'stage': 'pipeline_preprocess_skip'
             })
             
-            # Use original image directly - resize for consistency
-            from app.utils.preprocessing import resize_image, to_grayscale
-            resized = resize_image(image, max_size=512, image_id=image_id)
-            preprocessed_image = to_grayscale(resized, image_id=image_id)
+            # Use original image directly with NO preprocessing (not even resize or grayscale)
+            preprocessed_image = image
             
-            # Save minimal preprocessing artifacts
-            url = self.storage.save_artifact(resized, image_id, 'resized')
-            preprocess_urls['resized'] = self.storage.get_artifact_url(url)
-            url = self.storage.save_artifact(preprocessed_image, image_id, 'grayscale')
-            preprocess_urls['grayscale'] = self.storage.get_artifact_url(url)
-            preprocess_urls['sharpened'] = preprocess_urls['grayscale']  # Use grayscale as final
+            # Don't save any preprocessing artifacts when skipping
+            # This ensures no preprocessing card is shown
         else:
             logger.info("Step 1: Intelligent Preprocessing (auto-detection)", extra={
                 'image_id': image_id,
