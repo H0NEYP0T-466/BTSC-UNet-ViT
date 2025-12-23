@@ -14,6 +14,68 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+def create_brain_mask(
+    image: np.ndarray,
+    threshold_value: int = 10,
+    image_id: Optional[str] = None
+) -> np.ndarray:
+    """
+    Create an automatic brain mask using thresholding and morphological operations.
+    This mask is used to apply preprocessing only to the brain region,
+    avoiding artifacts on the black background.
+    
+    Args:
+        image: Input grayscale image (uint8)
+        threshold_value: Minimum intensity to consider as brain tissue
+        image_id: Image identifier for logging
+        
+    Returns:
+        Binary mask (0 = background, 255 = brain region)
+    """
+    start_time = time.time()
+    logger.info(f"Creating automatic brain mask (threshold={threshold_value})", extra={
+        'image_id': image_id,
+        'path': None,
+        'stage': 'brain_mask_creation'
+    })
+    
+    # Apply Otsu's thresholding for automatic threshold selection
+    # This is more robust than a fixed threshold for varying image intensities
+    _, mask = cv2.threshold(image, threshold_value, 255, cv2.THRESH_BINARY)
+    
+    # Apply morphological operations to clean up the mask
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    
+    # Close small holes in the mask
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+    
+    # Open to remove small noise regions
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
+    
+    # Fill holes using flood fill from corners (assumes corners are background)
+    h, w = mask.shape
+    flood_mask = np.zeros((h + 2, w + 2), dtype=np.uint8)
+    mask_filled = mask.copy()
+    
+    # Flood fill from corners to identify background
+    cv2.floodFill(mask_filled, flood_mask, (0, 0), 255)
+    
+    # Invert the flood-filled image to get the holes
+    mask_inv = cv2.bitwise_not(mask_filled)
+    
+    # Combine original mask with filled holes
+    mask = cv2.bitwise_or(mask, mask_inv)
+    
+    duration = time.time() - start_time
+    logger.info(f"Brain mask created in {duration:.3f}s, coverage: {np.sum(mask > 0) / mask.size * 100:.1f}%", extra={
+        'image_id': image_id,
+        'path': None,
+        'stage': 'brain_mask_creation'
+    })
+    
+    return mask
+
+
 def to_grayscale(image: np.ndarray, image_id: Optional[str] = None) -> np.ndarray:
     """
     Convert image to grayscale if needed.
@@ -313,14 +375,16 @@ def reduce_motion_artifact(
 def normalize_image(
     image: np.ndarray,
     method: str = "zscore",
+    mask: Optional[np.ndarray] = None,
     image_id: Optional[str] = None
 ) -> np.ndarray:
     """
-    Normalize image intensity.
+    Normalize image intensity, optionally only within a mask region.
     
     Args:
         image: Input grayscale image
         method: Normalization method ('zscore' or 'minmax')
+        mask: Optional binary mask to normalize only inside mask (0 = background, 255 = foreground)
         image_id: Image identifier for logging
         
     Returns:
@@ -335,26 +399,70 @@ def normalize_image(
     
     img_float = image.astype(np.float32)
     
-    if method == "zscore":
-        mean = np.mean(img_float)
-        std = np.std(img_float)
-        normalized = (img_float - mean) / (std + 1e-8)
-        # Scale back to [0, 255]
-        normalized = ((normalized - normalized.min()) / (normalized.max() - normalized.min()) * 255)
-        logger.info(f"Z-score normalization: mean={mean:.2f}, std={std:.2f}", extra={
+    if mask is not None:
+        # Normalize only within the masked region to avoid background artifacts
+        logger.info("Applying normalization inside brain mask only", extra={
             'image_id': image_id,
             'path': None,
             'stage': 'normalization'
         })
-    else:  # minmax
-        min_val = np.min(img_float)
-        max_val = np.max(img_float)
-        normalized = (img_float - min_val) / (max_val - min_val + 1e-8) * 255
-        logger.info(f"Min-max normalization: min={min_val:.2f}, max={max_val:.2f}", extra={
-            'image_id': image_id,
-            'path': None,
-            'stage': 'normalization'
-        })
+        
+        # Get values only inside the mask for computing statistics
+        mask_bool = mask > 0
+        masked_values = img_float[mask_bool]
+        
+        if method == "zscore":
+            mean = np.mean(masked_values)
+            std = np.std(masked_values)
+            # Normalize the entire image but only change values inside the mask
+            normalized = img_float.copy()
+            normalized[mask_bool] = (masked_values - mean) / (std + 1e-8)
+            # Scale masked region back to [0, 255]
+            masked_norm = normalized[mask_bool]
+            if masked_norm.max() != masked_norm.min():
+                normalized[mask_bool] = ((masked_norm - masked_norm.min()) / 
+                                          (masked_norm.max() - masked_norm.min()) * 255)
+            # Keep background as black (0)
+            normalized[~mask_bool] = 0
+            logger.info(f"Z-score normalization (masked): mean={mean:.2f}, std={std:.2f}", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'normalization'
+            })
+        else:  # minmax
+            min_val = np.min(masked_values)
+            max_val = np.max(masked_values)
+            normalized = img_float.copy()
+            normalized[mask_bool] = (masked_values - min_val) / (max_val - min_val + 1e-8) * 255
+            # Keep background as black (0)
+            normalized[~mask_bool] = 0
+            logger.info(f"Min-max normalization (masked): min={min_val:.2f}, max={max_val:.2f}", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'normalization'
+            })
+    else:
+        # Original behavior: normalize entire image
+        if method == "zscore":
+            mean = np.mean(img_float)
+            std = np.std(img_float)
+            normalized = (img_float - mean) / (std + 1e-8)
+            # Scale back to [0, 255]
+            normalized = ((normalized - normalized.min()) / (normalized.max() - normalized.min()) * 255)
+            logger.info(f"Z-score normalization: mean={mean:.2f}, std={std:.2f}", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'normalization'
+            })
+        else:  # minmax
+            min_val = np.min(img_float)
+            max_val = np.max(img_float)
+            normalized = (img_float - min_val) / (max_val - min_val + 1e-8) * 255
+            logger.info(f"Min-max normalization: min={min_val:.2f}, max={max_val:.2f}", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'normalization'
+            })
     
     normalized = normalized.astype(np.uint8)
     
@@ -427,28 +535,41 @@ def preprocess_pipeline(
         preserve_detail=config.get('preserve_detail', True)
     )
     
-    # Step 4: Enhance contrast (CLAHE)
+    # Create automatic brain mask to prevent artifacts on background
+    # This mask is used for CLAHE, sharpening, and normalization
+    # to avoid whitish lines and tile artifacts on the black background
+    use_brain_mask = config.get('use_brain_mask', True)
+    brain_mask = None
+    if use_brain_mask:
+        brain_mask = create_brain_mask(
+            motion_reduced,
+            threshold_value=config.get('brain_mask_threshold', 10),
+            image_id=image_id
+        )
+    
+    # Step 4: Enhance contrast (CLAHE) - apply within brain mask to avoid tile artifacts
     contrast = enhance_contrast_clahe(
         motion_reduced,
         clip_limit=config.get('clahe_clip_limit', 2.0),
         tile_grid_size=config.get('clahe_tile_grid_size', (8, 8)),
-        mask=None,
+        mask=brain_mask,
         image_id=image_id
     )
     
-    # Step 5: Sharpen (recover fine details)
+    # Step 5: Sharpen (recover fine details) - apply within brain mask to avoid edge artifacts
     sharpened = unsharp_mask(
         contrast,
         radius=config.get('unsharp_radius', 1.5),
         amount=config.get('unsharp_amount', 1.5),
-        mask=None,
+        mask=brain_mask,
         image_id=image_id
     )
     
-    # Step 6: Normalize (standardize intensity range)
+    # Step 6: Normalize (standardize intensity range) - apply within brain mask
     normalized = normalize_image(
         sharpened,
         method=config.get('normalize_method', 'zscore'),
+        mask=brain_mask,
         image_id=image_id
     )
     
