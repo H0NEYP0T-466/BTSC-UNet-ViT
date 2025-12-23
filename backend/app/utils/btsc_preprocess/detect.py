@@ -49,8 +49,22 @@ def detect_noise_type(
     
     # Test 1: Impulse noise (salt & pepper)
     # Count pixels at extremes (0 or 255)
+    # Exclude background by looking at central region or using simple threshold
+    # to avoid counting background 0s as impulse noise
     impulse_mask = (img == 0) | (img == 255)
-    impulse_fraction = np.mean(impulse_mask)
+    
+    # Create a simple foreground mask (pixels > 10)
+    foreground = img > 10
+    foreground_pixels = np.sum(foreground)
+    
+    if foreground_pixels > 0:
+        # Only count impulses in foreground
+        impulse_in_fg = np.sum(impulse_mask & foreground)
+        impulse_fraction = impulse_in_fg / foreground_pixels
+    else:
+        # No foreground, fall back to global
+        impulse_fraction = np.mean(impulse_mask)
+    
     results['scores']['salt_pepper'] = min(impulse_fraction * 100, 1.0)  # Scale to [0, 1]
     results['details']['impulse_fraction'] = impulse_fraction
     
