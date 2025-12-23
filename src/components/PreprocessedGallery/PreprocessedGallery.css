@@ -28,6 +28,14 @@
   gap: var(--spacing-md);
 }
 
+/* Responsive adjustments for smaller screens */
+@media (max-width: 600px) {
+  .gallery-grid {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--spacing-sm);
+  }
+}
+
 .gallery-item {
   display: flex;
   flex-direction: column;

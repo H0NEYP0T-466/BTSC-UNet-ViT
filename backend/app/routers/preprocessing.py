@@ -64,8 +64,8 @@ async def preprocess_image(file: UploadFile = File(...)):
             'auto': True,
             'clahe_clip_limit': settings.CLAHE_CLIP_LIMIT,
             'clahe_tile_grid': settings.CLAHE_TILE_GRID_SIZE,
-            'sharpen_amount': 0.8,  # Conservative sharpening
-            'sharpen_threshold': 0.02,  # Higher threshold to avoid noise
+            'sharpen_amount': settings.UNSHARP_AMOUNT,
+            'sharpen_threshold': settings.SHARPEN_THRESHOLD,
         }
         
         preprocessed = run_preprocessing(

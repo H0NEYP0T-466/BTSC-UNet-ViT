@@ -101,8 +101,8 @@ class PipelineService:
             'auto': True,  # Enable auto-detection
             'clahe_clip_limit': settings.CLAHE_CLIP_LIMIT,
             'clahe_tile_grid': settings.CLAHE_TILE_GRID_SIZE,
-            'sharpen_amount': 0.8,  # Conservative to avoid white noise
-            'sharpen_threshold': 0.02,  # Higher threshold to avoid noise
+            'sharpen_amount': settings.UNSHARP_AMOUNT,
+            'sharpen_threshold': settings.SHARPEN_THRESHOLD,
         }
         
         preprocessed = run_preprocessing(
