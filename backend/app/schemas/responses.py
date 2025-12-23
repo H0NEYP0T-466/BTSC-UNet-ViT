@@ -22,6 +22,14 @@ class PreprocessResponse(BaseModel):
     contrast_url: str
     sharpened_url: str
     normalized_url: str
+    # Extended comprehensive pipeline stages (optional)
+    salt_pepper_cleaned_url: Optional[str] = None
+    gaussian_denoised_url: Optional[str] = None
+    speckle_denoised_url: Optional[str] = None
+    pma_corrected_url: Optional[str] = None
+    deblurred_url: Optional[str] = None
+    contrast_enhanced_url: Optional[str] = None
+    sharpened_url2: Optional[str] = None
     log_context: LogContext
 
 
