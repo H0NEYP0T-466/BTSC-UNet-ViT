@@ -70,9 +70,7 @@ def run_inference(self, image: np.ndarray, skip_preprocessing: bool = False) -> 
     if skip_preprocessing:
         # Fast mode: no preprocessing, raw image passed directly to ViT
         preprocessed_image = image
-        preprocess_urls = {
-            'normalized': ...  # Raw image saved as 'normalized'
-        }
+        preprocess_urls = {}  # Empty dict - no preprocessing display
     else:
         # Full mode: complete preprocessing pipeline
         preprocessed = preprocess_pipeline(image, config=preprocess_config, image_id=image_id)
@@ -101,7 +99,7 @@ export interface InferenceResponse {
     motion_reduced?: string;
     contrast?: string;
     sharpened?: string;
-    normalized: string;  // Always present
+    normalized?: string;  // Optional - not present when skip_preprocessing=true
   };
   ...
 }

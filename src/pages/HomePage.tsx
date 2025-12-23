@@ -104,7 +104,7 @@ export function HomePage() {
                         motion_reduced: result.preprocessing.motion_reduced ? apiClient.getResourceUrl(result.preprocessing.motion_reduced) : undefined,
                         contrast: result.preprocessing.contrast ? apiClient.getResourceUrl(result.preprocessing.contrast) : undefined,
                         sharpened: result.preprocessing.sharpened ? apiClient.getResourceUrl(result.preprocessing.sharpened) : undefined,
-                        normalized: result.preprocessing.normalized ? apiClient.getResourceUrl(result.preprocessing.normalized) : undefined,
+                        normalized: apiClient.getResourceUrl(result.preprocessing.normalized!),
                       }}
                     />
                   </div>
