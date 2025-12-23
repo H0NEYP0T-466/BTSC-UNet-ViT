@@ -15,14 +15,14 @@ export function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<InferenceResponse | null>(null);
 
-  const handleUpload = async (file: File) => {
-    console.log('[HomePage] Starting inference for file:', file.name);
+  const handleUpload = async (file: File, skipPreprocessing: boolean) => {
+    console.log('[HomePage] Starting inference for file:', file.name, 'skipPreprocessing:', skipPreprocessing);
     setIsLoading(true);
     setError(null);
     setResult(null);
 
     try {
-      const response = await apiClient.runInference(file);
+      const response = await apiClient.runInference(file, skipPreprocessing);
       console.log('[HomePage] Inference completed:', response);
       
       // Validate response structure

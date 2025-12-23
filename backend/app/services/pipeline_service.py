@@ -61,17 +61,18 @@ class PipelineService:
             })
             self.vit = get_vit_inference()
     
-    def run_inference(self, image: np.ndarray) -> Dict:
+    def run_inference(self, image: np.ndarray, skip_preprocessing: bool = False) -> Dict:
         """
         Run full inference pipeline.
         
         Pipeline flow:
-        1. Intelligent Preprocessing (auto-detect noise/blur/motion and fix)
+        1. Intelligent Preprocessing (auto-detect noise/blur/motion and fix) OR skip if requested
         2. ViT Classification (classify tumor type)
         3. Conditional Tumor Segmentation (only if tumor detected)
         
         Args:
             image: Input image (RGB or grayscale)
+            skip_preprocessing: If True, only converts to grayscale and skips all enhancement stages
             
         Returns:
             Dictionary with all results and artifact URLs
@@ -81,7 +82,7 @@ class PipelineService:
         # Generate image ID
         image_id = self.storage.generate_image_id()
         
-        logger.info(f"Starting inference pipeline for image {image_id}", extra={
+        logger.info(f"Starting inference pipeline for image {image_id} (skip_preprocessing={skip_preprocessing})", extra={
             'image_id': image_id,
             'path': None,
             'stage': 'pipeline_start'
@@ -90,26 +91,49 @@ class PipelineService:
         # Save original image
         original_url = self.storage.save_upload(image, image_id)
         
-        # Step 1: Intelligent Preprocessing
-        logger.info("Step 1: Intelligent Preprocessing (auto-detection)", extra={
-            'image_id': image_id,
-            'path': None,
-            'stage': 'pipeline_preprocess'
-        })
-        
-        preprocess_config = {
-            'auto': True,  # Enable auto-detection
-            'clahe_clip_limit': settings.CLAHE_CLIP_LIMIT,
-            'clahe_tile_grid': settings.CLAHE_TILE_GRID_SIZE,
-            'sharpen_amount': settings.UNSHARP_AMOUNT,
-            'sharpen_threshold': settings.SHARPEN_THRESHOLD,
-        }
-        
-        preprocessed = run_preprocessing(
-            image, 
-            opts=preprocess_config, 
-            image_id=image_id
-        )
+        # Step 1: Intelligent Preprocessing or Skip
+        if skip_preprocessing:
+            logger.info("Step 1: Skipping preprocessing (skip_preprocessing=True)", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'pipeline_preprocess_skip'
+            })
+            
+            # Only convert to grayscale
+            from app.utils.preprocessing import to_grayscale
+            grayscale = to_grayscale(image, image_id=image_id)
+            
+            # Use grayscale for all stages
+            preprocessed = {
+                'grayscale': grayscale,
+                'salt_pepper_cleaned': grayscale.copy(),
+                'gaussian_denoised': grayscale.copy(),
+                'speckle_denoised': grayscale.copy(),
+                'pma_corrected': grayscale.copy(),
+                'deblurred': grayscale.copy(),
+                'contrast_enhanced': grayscale.copy(),
+                'sharpened': grayscale.copy()
+            }
+        else:
+            logger.info("Step 1: Intelligent Preprocessing (auto-detection)", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'pipeline_preprocess'
+            })
+            
+            preprocess_config = {
+                'auto': True,  # Enable auto-detection
+                'clahe_clip_limit': settings.CLAHE_CLIP_LIMIT,
+                'clahe_tile_grid': settings.CLAHE_TILE_GRID_SIZE,
+                'sharpen_amount': settings.UNSHARP_AMOUNT,
+                'sharpen_threshold': settings.SHARPEN_THRESHOLD,
+            }
+            
+            preprocessed = run_preprocessing(
+                image, 
+                opts=preprocess_config, 
+                image_id=image_id
+            )
         
         # Save preprocessing artifacts (only numpy arrays, skip nested dicts)
         preprocess_urls = {}

@@ -92,6 +92,9 @@ class Settings(BaseSettings):
     SHARPEN_THRESHOLD: float = 0.02  # Higher threshold to avoid sharpening noise
     MOTION_PRESERVE_DETAIL: bool = True  # Use minimal edge-preserving bilateral filter
     
+    # Image processing parameters
+    MAX_IMAGE_SIZE: int = 1024  # Maximum width/height for input images (resize if larger)
+    
     # Segmentation post-processing parameters
     SEGMENTATION_MIN_AREA: int = 100  # Minimum area for connected components (pixels)
     SEGMENTATION_THRESHOLD: float = 0.5  # Threshold for binary segmentation

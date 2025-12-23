@@ -258,4 +258,57 @@ def bytes_to_numpy(image_bytes: bytes) -> np.ndarray:
     return img_array
 
 
+def resize_image(
+    image: np.ndarray,
+    max_size: int = 1024,
+    image_id: Optional[str] = None
+) -> np.ndarray:
+    """
+    Resize image if it exceeds max_size while maintaining aspect ratio.
+    
+    Args:
+        image: Input image (grayscale or RGB)
+        max_size: Maximum width or height
+        image_id: Image identifier for logging
+        
+    Returns:
+        Resized image (or original if already within bounds)
+    """
+    h, w = image.shape[:2]
+    
+    # Check if resizing is needed
+    if h <= max_size and w <= max_size:
+        logger.info(f"Image size {w}x{h} within limit, no resizing needed", extra={
+            'image_id': image_id,
+            'path': None,
+            'stage': 'resize'
+        })
+        return image
+    
+    # Calculate new dimensions maintaining aspect ratio
+    if h > w:
+        new_h = max_size
+        new_w = int(w * (max_size / h))
+    else:
+        new_w = max_size
+        new_h = int(h * (max_size / w))
+    
+    logger.info(f"Resizing image from {w}x{h} to {new_w}x{new_h}", extra={
+        'image_id': image_id,
+        'path': None,
+        'stage': 'resize'
+    })
+    
+    # Resize using high-quality interpolation
+    resized = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+    
+    logger.info(f"Image resized successfully to {new_w}x{new_h}", extra={
+        'image_id': image_id,
+        'path': None,
+        'stage': 'resize'
+    })
+    
+    return resized
+
+
 import io

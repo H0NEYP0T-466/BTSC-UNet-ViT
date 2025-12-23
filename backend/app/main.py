@@ -1,7 +1,8 @@
 """
 Main FastAPI application for BTSC-UNet-ViT.
 """
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form
+from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.config import settings
@@ -9,7 +10,7 @@ from app.logging_config import setup_logging
 from app.routers import health, preprocessing, segmentation, classification
 from app.schemas.responses import InferenceResponse
 from app.services.pipeline_service import get_pipeline_service
-from app.utils.imaging import bytes_to_numpy
+from app.utils.imaging import bytes_to_numpy, resize_image
 from app.utils.logger import get_logger
 import time
 
@@ -61,15 +62,22 @@ async def root():
 
 
 @app.post(f"{settings.API_PREFIX}/inference", response_model=InferenceResponse)
-async def run_inference(file: UploadFile = File(...)):
+async def run_inference(
+    file: UploadFile = File(...),
+    skip_preprocessing: Optional[bool] = Form(False)
+):
     """
     Run full inference pipeline: preprocessing -> tumor segmentation -> classification.
     
     This is the main endpoint that orchestrates all stages.
+    
+    Args:
+        file: Uploaded image file
+        skip_preprocessing: If True, only converts to grayscale and skips all preprocessing enhancement stages
     """
     start_time = time.time()
     
-    logger.info(f"Received full inference request: filename={file.filename}", extra={
+    logger.info(f"Received full inference request: filename={file.filename}, skip_preprocessing={skip_preprocessing}", extra={
         'image_id': None,
         'path': file.filename,
         'stage': 'inference_request'
@@ -80,9 +88,12 @@ async def run_inference(file: UploadFile = File(...)):
         contents = await file.read()
         image = bytes_to_numpy(contents)
         
+        # Resize if needed
+        image = resize_image(image, max_size=settings.MAX_IMAGE_SIZE)
+        
         # Run pipeline
         pipeline = get_pipeline_service()
-        result = pipeline.run_inference(image)
+        result = pipeline.run_inference(image, skip_preprocessing=skip_preprocessing)
         
         duration = time.time() - start_time
         

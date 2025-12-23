@@ -1,11 +1,12 @@
 """
 Preprocessing router.
 """
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form
+from typing import Optional
 from app.schemas.responses import PreprocessResponse, LogContext
 from app.utils.preprocessing import run_preprocessing, to_grayscale
 from app.utils.btsc_preprocess import detect_noise_type, detect_blur, detect_motion
-from app.utils.imaging import bytes_to_numpy
+from app.utils.imaging import bytes_to_numpy, resize_image
 from app.services.storage_service import get_storage_service
 from app.config import settings
 from app.utils.logger import get_logger
@@ -17,11 +18,15 @@ router = APIRouter(prefix="/preprocess", tags=["preprocessing"])
 
 
 @router.post("", response_model=PreprocessResponse)
-async def preprocess_image(file: UploadFile = File(...)):
+async def preprocess_image(
+    file: UploadFile = File(...),
+    skip_preprocessing: Optional[bool] = Form(False)
+):
     """
     Preprocess uploaded image with intelligent quality-focused enhancement.
     
     Pipeline with auto-detection:
+    - Resizes image if larger than MAX_IMAGE_SIZE (maintains aspect ratio)
     - Converts to grayscale
     - Detects and removes Salt & Pepper noise (median filter)
     - Detects and removes Gaussian noise (NLM denoising)
@@ -32,6 +37,10 @@ async def preprocess_image(file: UploadFile = File(...)):
     - Sharpens edges (noise-aware unsharp masking)
     
     Only applies corrections when issues are detected to avoid over-processing.
+    
+    Args:
+        file: Uploaded image file
+        skip_preprocessing: If True, only converts to grayscale and skips all enhancement stages
     """
     start_time = time.time()
     
@@ -46,18 +55,62 @@ async def preprocess_image(file: UploadFile = File(...)):
         contents = await file.read()
         image = bytes_to_numpy(contents)
         
+        # Resize if needed
+        image = resize_image(image, max_size=settings.MAX_IMAGE_SIZE)
+        
         # Get storage service
         storage = get_storage_service()
         image_id = storage.generate_image_id()
         
-        logger.info("Starting intelligent preprocessing", extra={
+        logger.info(f"Starting preprocessing (skip={skip_preprocessing})", extra={
             'image_id': image_id,
             'path': None,
             'stage': 'preprocess'
         })
         
-        # Save original
+        # Save original (after resize)
         original_url = storage.save_upload(image, image_id)
+        
+        if skip_preprocessing:
+            # Skip all preprocessing, only convert to grayscale
+            logger.info("Skipping preprocessing stages (skip_preprocessing=True)", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'preprocess_skip'
+            })
+            
+            grayscale = to_grayscale(image, image_id=image_id)
+            
+            # Save only grayscale, use it for all stages
+            urls = {}
+            for stage_name in ['grayscale', 'salt_pepper_cleaned', 'gaussian_denoised', 
+                              'speckle_denoised', 'pma_corrected', 'deblurred', 
+                              'contrast_enhanced', 'sharpened']:
+                rel_path = storage.save_artifact(grayscale, image_id, stage_name)
+                urls[stage_name] = storage.get_artifact_url(rel_path)
+            
+            duration = time.time() - start_time
+            
+            return PreprocessResponse(
+                image_id=image_id,
+                original_url=storage.get_artifact_url(original_url),
+                grayscale_url=urls['grayscale'],
+                salt_pepper_cleaned_url=urls['salt_pepper_cleaned'],
+                gaussian_denoised_url=urls['gaussian_denoised'],
+                speckle_denoised_url=urls['speckle_denoised'],
+                pma_corrected_url=urls['pma_corrected'],
+                deblurred_url=urls['deblurred'],
+                contrast_enhanced_url=urls['contrast_enhanced'],
+                sharpened_url=urls['sharpened'],
+                noise_detected='none',
+                blur_detected=False,
+                motion_detected=False,
+                log_context=LogContext(
+                    image_id=image_id,
+                    duration=duration,
+                    stage='preprocess_skipped'
+                )
+            )
         
         # Preprocess with auto-detection
         config = {

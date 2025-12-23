@@ -558,8 +558,8 @@ def run_preprocessing(
             'stage': 'noise_detection'
         })
         
-        # Salt & Pepper: Best fixed with median filter
-        if noise_info['type'] == 'salt_pepper' or noise_info['scores'].get('salt_pepper', 0) > 0.3:
+        # Salt & Pepper: Apply if detected OR if score is moderate (lowered threshold)
+        if noise_info['type'] == 'salt_pepper' or noise_info['scores'].get('salt_pepper', 0) > 0.15:
             logger.info("Applying salt & pepper removal (median filter)", extra={
                 'image_id': image_id,
                 'path': None,
@@ -574,8 +574,8 @@ def run_preprocessing(
         # Re-detect after S&P removal
         noise_info = detect_noise_type(current, image_id=image_id)
         
-        # Gaussian noise: Best fixed with NLM denoising
-        if noise_info['type'] == 'gaussian' or noise_info['scores'].get('gaussian', 0) > 0.3:
+        # Gaussian noise: Apply if detected OR if score is moderate (lowered threshold)
+        if noise_info['type'] == 'gaussian' or noise_info['scores'].get('gaussian', 0) > 0.15:
             logger.info("Applying Gaussian noise removal (NLM)", extra={
                 'image_id': image_id,
                 'path': None,
@@ -590,8 +590,8 @@ def run_preprocessing(
         # Re-detect after Gaussian removal
         noise_info = detect_noise_type(current, image_id=image_id)
         
-        # Speckle noise: Best fixed with wavelet denoising
-        if noise_info['type'] == 'speckle' or noise_info['scores'].get('speckle', 0) > 0.5:
+        # Speckle noise: Apply if detected OR if score is moderate (lowered threshold)
+        if noise_info['type'] == 'speckle' or noise_info['scores'].get('speckle', 0) > 0.3:
             logger.info("Applying speckle noise removal (wavelet)", extra={
                 'image_id': image_id,
                 'path': None,
@@ -617,7 +617,8 @@ def run_preprocessing(
             'stage': 'motion_detection'
         })
         
-        if motion_info['has_motion'] or motion_info['streak_score'] > 0.15:
+        # Apply if motion detected OR if streak score is moderate (lowered threshold)
+        if motion_info['has_motion'] or motion_info['streak_score'] > 0.10:
             logger.info(f"Applying PMA correction (angle={motion_info['angle_estimate']}°)", extra={
                 'image_id': image_id,
                 'path': None,
@@ -644,7 +645,8 @@ def run_preprocessing(
             'stage': 'blur_detection'
         })
         
-        if blur_info['is_blurred'] or blur_info['blur_score'] > 0.5:
+        # Apply if blur detected OR if score is moderate (lowered threshold)
+        if blur_info['is_blurred'] or blur_info['blur_score'] > 0.3:
             # Use edge-aware USM for mild blur (bilateral/median), Wiener for heavy blur
             if blur_info['blur_score'] > 0.7:
                 logger.info("Applying heavy deblur (Wiener)", extra={
