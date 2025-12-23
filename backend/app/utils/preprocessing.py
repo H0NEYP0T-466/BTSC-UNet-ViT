@@ -1,6 +1,8 @@
 """
 Image preprocessing utilities for BTSC-UNet-ViT.
-Implements denoising, normalization, contrast enhancement.
+Implements intelligent noise/blur detection and targeted correction.
+Supports: Salt & Pepper, Gaussian noise, Speckle noise, Gaussian blur,
+Bilateral blur, Median blur, and Patient Motion Artifacts (PMA).
 """
 import time
 from typing import Dict, Optional, Tuple
@@ -10,6 +12,21 @@ from skimage import filters, restoration, exposure
 from skimage.filters import unsharp_mask as sk_unsharp_mask
 from scipy.ndimage import median_filter
 from app.utils.logger import get_logger
+
+# Import BTSC preprocessing modules for intelligent processing
+from app.utils.btsc_preprocess import (
+    remove_salt_and_pepper,
+    denoise_gaussian_nlmeans,
+    denoise_speckle_wavelet,
+    deblur_gaussian_wiener,
+    deblur_edge_aware_usm,
+    correct_motion_artifacts,
+    clahe_enhance,
+    sharpen_noise_aware,
+    detect_noise_type,
+    detect_blur,
+    detect_motion,
+)
 
 logger = get_logger(__name__)
 
@@ -467,3 +484,223 @@ def preprocess_pipeline(
         'sharpened': sharpened,
         'normalized': normalized
     }
+
+
+def run_preprocessing(
+    image: np.ndarray,
+    opts: Optional[Dict] = None,
+    image_id: Optional[str] = None
+) -> Dict[str, np.ndarray]:
+    """
+    Run intelligent preprocessing pipeline with auto-detection.
+    
+    This pipeline detects and corrects specific image quality issues:
+    - Noise: Salt & Pepper, Gaussian, Speckle
+    - Blur: Gaussian, Bilateral, Median
+    - Motion: Patient Motion Artifacts (PMA)
+    
+    Only applies corrections when issues are detected to avoid
+    over-processing and quality degradation.
+    
+    Args:
+        image: Input image (RGB or grayscale)
+        opts: Options dict:
+            - auto: bool - Auto-detect and apply corrections (default: True)
+            - clahe_clip_limit: float - CLAHE clip limit (default: 1.5, reduced from 2.0)
+            - clahe_tile_grid: tuple - CLAHE tile grid (default: (8, 8))
+            - sharpen_amount: float - Sharpening strength (default: 0.8, reduced from 1.2)
+            - sharpen_threshold: float - Sharpening threshold (default: 0.02)
+        image_id: Image identifier for logging
+        
+    Returns:
+        Dictionary with all preprocessing stages:
+        - grayscale: Grayscale conversion
+        - salt_pepper_cleaned: After salt & pepper removal (if detected)
+        - gaussian_denoised: After Gaussian noise removal (if detected)
+        - speckle_denoised: After speckle noise removal (if detected)
+        - deblurred: After blur correction (if detected)
+        - pma_corrected: After motion artifact correction (if detected)
+        - contrast_enhanced: After CLAHE enhancement
+        - sharpened: After edge sharpening (final output)
+    """
+    start_time = time.time()
+    logger.info("Intelligent preprocessing pipeline started", extra={
+        'image_id': image_id,
+        'path': None,
+        'stage': 'preprocess_intelligent'
+    })
+    
+    opts = opts or {}
+    auto_detect = opts.get('auto', True)
+    
+    # Conservative parameters to avoid white noise/over-processing
+    clahe_clip = opts.get('clahe_clip_limit', 1.5)  # Reduced from 2.0
+    clahe_grid = opts.get('clahe_tile_grid', (8, 8))
+    sharpen_amount = opts.get('sharpen_amount', 0.8)  # Reduced from 1.2
+    sharpen_threshold = opts.get('sharpen_threshold', 0.02)  # Higher threshold
+    
+    results = {}
+    
+    # Step 1: Convert to grayscale
+    grayscale = to_grayscale(image, image_id=image_id)
+    results['grayscale'] = grayscale
+    
+    # Working image starts as grayscale
+    current = grayscale.copy()
+    
+    # Step 2: Detect and remove noise (sequential: S&P → Gaussian → Speckle)
+    if auto_detect:
+        # Detect noise type
+        noise_info = detect_noise_type(current, image_id=image_id)
+        logger.info(f"Noise detection: type={noise_info['type']}, scores={noise_info['scores']}", extra={
+            'image_id': image_id,
+            'path': None,
+            'stage': 'noise_detection'
+        })
+        
+        # Salt & Pepper: Best fixed with median filter
+        if noise_info['type'] == 'salt_pepper' or noise_info['scores'].get('salt_pepper', 0) > 0.3:
+            logger.info("Applying salt & pepper removal (median filter)", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'salt_pepper_removal'
+            })
+            current = remove_salt_and_pepper(current, max_kernel=7, image_id=image_id)
+            results['salt_pepper_cleaned'] = current
+        else:
+            # No salt & pepper detected, pass through unchanged
+            results['salt_pepper_cleaned'] = current.copy()
+        
+        # Re-detect after S&P removal
+        noise_info = detect_noise_type(current, image_id=image_id)
+        
+        # Gaussian noise: Best fixed with NLM denoising
+        if noise_info['type'] == 'gaussian' or noise_info['scores'].get('gaussian', 0) > 0.3:
+            logger.info("Applying Gaussian noise removal (NLM)", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'gaussian_removal'
+            })
+            current = denoise_gaussian_nlmeans(current, h_scale=0.7, image_id=image_id)
+            results['gaussian_denoised'] = current
+        else:
+            # No Gaussian noise detected
+            results['gaussian_denoised'] = current.copy()
+        
+        # Re-detect after Gaussian removal
+        noise_info = detect_noise_type(current, image_id=image_id)
+        
+        # Speckle noise: Best fixed with wavelet denoising
+        if noise_info['type'] == 'speckle' or noise_info['scores'].get('speckle', 0) > 0.5:
+            logger.info("Applying speckle noise removal (wavelet)", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'speckle_removal'
+            })
+            current = denoise_speckle_wavelet(current, image_id=image_id)
+            results['speckle_denoised'] = current
+        else:
+            # No speckle noise detected
+            results['speckle_denoised'] = current.copy()
+    else:
+        # No auto-detection, pass through with minimal processing
+        results['salt_pepper_cleaned'] = current.copy()
+        results['gaussian_denoised'] = current.copy()
+        results['speckle_denoised'] = current.copy()
+    
+    # Step 3: Detect and correct motion artifacts (PMA)
+    if auto_detect:
+        motion_info = detect_motion(current, image_id=image_id)
+        logger.info(f"Motion detection: has_motion={motion_info['has_motion']}, streak_score={motion_info['streak_score']:.3f}", extra={
+            'image_id': image_id,
+            'path': None,
+            'stage': 'motion_detection'
+        })
+        
+        if motion_info['has_motion'] or motion_info['streak_score'] > 0.15:
+            logger.info(f"Applying PMA correction (angle={motion_info['angle_estimate']}°)", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'pma_correction'
+            })
+            current = correct_motion_artifacts(
+                current, 
+                angle=motion_info['angle_estimate'],
+                image_id=image_id
+            )
+            results['pma_corrected'] = current
+        else:
+            # No motion artifacts detected
+            results['pma_corrected'] = current.copy()
+    else:
+        results['pma_corrected'] = current.copy()
+    
+    # Step 4: Detect and correct blur
+    if auto_detect:
+        blur_info = detect_blur(current, image_id=image_id)
+        logger.info(f"Blur detection: is_blurred={blur_info['is_blurred']}, blur_score={blur_info['blur_score']:.3f}, lap_var={blur_info['laplacian_var']:.1f}", extra={
+            'image_id': image_id,
+            'path': None,
+            'stage': 'blur_detection'
+        })
+        
+        if blur_info['is_blurred'] or blur_info['blur_score'] > 0.5:
+            # Use edge-aware USM for mild blur (bilateral/median), Wiener for heavy blur
+            if blur_info['blur_score'] > 0.7:
+                logger.info("Applying heavy deblur (Wiener)", extra={
+                    'image_id': image_id,
+                    'path': None,
+                    'stage': 'deblur'
+                })
+                current = deblur_gaussian_wiener(current, image_id=image_id)
+            else:
+                logger.info("Applying light deblur (edge-aware USM)", extra={
+                    'image_id': image_id,
+                    'path': None,
+                    'stage': 'deblur'
+                })
+                current = deblur_edge_aware_usm(current, image_id=image_id)
+            results['deblurred'] = current
+        else:
+            # No significant blur detected
+            results['deblurred'] = current.copy()
+    else:
+        results['deblurred'] = current.copy()
+    
+    # Step 5: Contrast enhancement (CLAHE with conservative parameters)
+    logger.info(f"Applying CLAHE contrast enhancement (clip={clahe_clip})", extra={
+        'image_id': image_id,
+        'path': None,
+        'stage': 'contrast_enhancement'
+    })
+    current = clahe_enhance(
+        current,
+        clipLimit=clahe_clip,
+        tileGrid=clahe_grid,
+        image_id=image_id
+    )
+    results['contrast_enhanced'] = current
+    
+    # Step 6: Noise-aware sharpening (conservative)
+    logger.info(f"Applying noise-aware sharpening (amount={sharpen_amount})", extra={
+        'image_id': image_id,
+        'path': None,
+        'stage': 'sharpening'
+    })
+    current = sharpen_noise_aware(
+        current,
+        radius=1.0,
+        amount=sharpen_amount,
+        threshold=sharpen_threshold,
+        image_id=image_id
+    )
+    results['sharpened'] = current
+    
+    duration = time.time() - start_time
+    logger.info(f"Intelligent preprocessing completed in {duration:.3f}s", extra={
+        'image_id': image_id,
+        'path': None,
+        'stage': 'preprocess_complete'
+    })
+    
+    return results

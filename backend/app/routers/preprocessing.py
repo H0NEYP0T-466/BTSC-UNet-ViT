@@ -3,7 +3,8 @@ Preprocessing router.
 """
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.schemas.responses import PreprocessResponse, LogContext
-from app.utils.preprocessing import preprocess_pipeline
+from app.utils.preprocessing import run_preprocessing, to_grayscale
+from app.utils.btsc_preprocess import detect_noise_type, detect_blur, detect_motion
 from app.utils.imaging import bytes_to_numpy
 from app.services.storage_service import get_storage_service
 from app.config import settings
@@ -18,15 +19,19 @@ router = APIRouter(prefix="/preprocess", tags=["preprocessing"])
 @router.post("", response_model=PreprocessResponse)
 async def preprocess_image(file: UploadFile = File(...)):
     """
-    Preprocess uploaded image with quality-focused enhancement.
+    Preprocess uploaded image with intelligent quality-focused enhancement.
     
-    Pipeline:
+    Pipeline with auto-detection:
     - Converts to grayscale
-    - Denoises (preserves edges)
-    - Reduces motion artifacts (minimal blur)
-    - Enhances contrast (CLAHE)
-    - Sharpens edges (recovers detail)
-    - Normalizes intensity (standardizes range)
+    - Detects and removes Salt & Pepper noise (median filter)
+    - Detects and removes Gaussian noise (NLM denoising)
+    - Detects and removes Speckle noise (wavelet denoising)
+    - Detects and corrects Patient Motion Artifacts (PMA)
+    - Detects and corrects blur (Wiener/USM deconvolution)
+    - Enhances contrast (CLAHE with conservative parameters)
+    - Sharpens edges (noise-aware unsharp masking)
+    
+    Only applies corrections when issues are detected to avoid over-processing.
     """
     start_time = time.time()
     
@@ -45,7 +50,7 @@ async def preprocess_image(file: UploadFile = File(...)):
         storage = get_storage_service()
         image_id = storage.generate_image_id()
         
-        logger.info("Starting preprocessing", extra={
+        logger.info("Starting intelligent preprocessing", extra={
             'image_id': image_id,
             'path': None,
             'stage': 'preprocess'
@@ -54,24 +59,26 @@ async def preprocess_image(file: UploadFile = File(...)):
         # Save original
         original_url = storage.save_upload(image, image_id)
         
-        # Preprocess
+        # Preprocess with auto-detection
         config = {
-            'median_kernel_size': settings.MEDIAN_KERNEL_SIZE,
+            'auto': True,
             'clahe_clip_limit': settings.CLAHE_CLIP_LIMIT,
-            'clahe_tile_grid_size': settings.CLAHE_TILE_GRID_SIZE,
-            'unsharp_radius': settings.UNSHARP_RADIUS,
-            'unsharp_amount': settings.UNSHARP_AMOUNT,
-            'normalize_method': 'zscore',
-            'use_nlm_denoising': True,
-            'nlm_h': settings.NLM_H,
-            'preserve_detail': True
+            'clahe_tile_grid': settings.CLAHE_TILE_GRID_SIZE,
+            'sharpen_amount': 0.8,  # Conservative sharpening
+            'sharpen_threshold': 0.02,  # Higher threshold to avoid noise
         }
         
-        preprocessed = preprocess_pipeline(
+        preprocessed = run_preprocessing(
             image, 
-            config=config, 
+            opts=config, 
             image_id=image_id
         )
+        
+        # Get detection results for response
+        grayscale = to_grayscale(image, image_id=image_id)
+        noise_info = detect_noise_type(grayscale, image_id=image_id)
+        blur_info = detect_blur(grayscale, image_id=image_id)
+        motion_info = detect_motion(grayscale, image_id=image_id)
         
         # Save all stages
         urls = {}
@@ -91,11 +98,16 @@ async def preprocess_image(file: UploadFile = File(...)):
             image_id=image_id,
             original_url=storage.get_artifact_url(original_url),
             grayscale_url=urls['grayscale'],
-            denoised_url=urls['denoised'],
-            motion_reduced_url=urls['motion_reduced'],
-            contrast_url=urls['contrast'],
+            salt_pepper_cleaned_url=urls['salt_pepper_cleaned'],
+            gaussian_denoised_url=urls['gaussian_denoised'],
+            speckle_denoised_url=urls['speckle_denoised'],
+            pma_corrected_url=urls['pma_corrected'],
+            deblurred_url=urls['deblurred'],
+            contrast_enhanced_url=urls['contrast_enhanced'],
             sharpened_url=urls['sharpened'],
-            normalized_url=urls['normalized'],
+            noise_detected=noise_info['type'],
+            blur_detected=blur_info['is_blurred'],
+            motion_detected=motion_info['has_motion'],
             log_context=LogContext(
                 image_id=image_id,
                 duration=duration,

@@ -17,11 +17,20 @@ class PreprocessResponse(BaseModel):
     image_id: str
     original_url: str
     grayscale_url: str
-    denoised_url: str
-    motion_reduced_url: str
-    contrast_url: str
-    sharpened_url: str
-    normalized_url: str
+    # Noise removal stages
+    salt_pepper_cleaned_url: str
+    gaussian_denoised_url: str
+    speckle_denoised_url: str
+    # Motion and blur correction stages
+    pma_corrected_url: str
+    deblurred_url: str
+    # Enhancement stages
+    contrast_enhanced_url: str
+    sharpened_url: str  # Final output
+    # Detection results
+    noise_detected: Optional[str] = None
+    blur_detected: Optional[bool] = None
+    motion_detected: Optional[bool] = None
     log_context: LogContext
 
 

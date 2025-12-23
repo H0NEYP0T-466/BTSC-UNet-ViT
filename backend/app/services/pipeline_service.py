@@ -4,7 +4,7 @@ Pipeline service for orchestrating preprocessing, tumor segmentation, and classi
 import time
 from typing import Dict, Optional
 import numpy as np
-from app.utils.preprocessing import preprocess_pipeline
+from app.utils.preprocessing import run_preprocessing
 from app.models.unet.infer_unet import get_unet_inference
 from app.models.unet_tumor.infer_unet_tumor import get_unet_tumor_inference
 from app.models.vit.infer_vit import get_vit_inference
@@ -65,8 +65,8 @@ class PipelineService:
         """
         Run full inference pipeline.
         
-        Pipeline flow (NEW):
-        1. Preprocessing (grayscale, denoise, contrast, sharpen, normalize)
+        Pipeline flow:
+        1. Intelligent Preprocessing (auto-detect noise/blur/motion and fix)
         2. ViT Classification (classify tumor type)
         3. Conditional Tumor Segmentation (only if tumor detected)
         
@@ -90,28 +90,24 @@ class PipelineService:
         # Save original image
         original_url = self.storage.save_upload(image, image_id)
         
-        # Step 1: Preprocessing
-        logger.info("Step 1: Preprocessing", extra={
+        # Step 1: Intelligent Preprocessing
+        logger.info("Step 1: Intelligent Preprocessing (auto-detection)", extra={
             'image_id': image_id,
             'path': None,
             'stage': 'pipeline_preprocess'
         })
         
         preprocess_config = {
-            'median_kernel_size': settings.MEDIAN_KERNEL_SIZE,
+            'auto': True,  # Enable auto-detection
             'clahe_clip_limit': settings.CLAHE_CLIP_LIMIT,
-            'clahe_tile_grid_size': settings.CLAHE_TILE_GRID_SIZE,
-            'unsharp_radius': settings.UNSHARP_RADIUS,
-            'unsharp_amount': settings.UNSHARP_AMOUNT,
-            'preserve_detail': settings.MOTION_PRESERVE_DETAIL,
-            'normalize_method': 'zscore',
-            'use_nlm_denoising': True,
-            'nlm_h': settings.NLM_H
+            'clahe_tile_grid': settings.CLAHE_TILE_GRID_SIZE,
+            'sharpen_amount': 0.8,  # Conservative to avoid white noise
+            'sharpen_threshold': 0.02,  # Higher threshold to avoid noise
         }
         
-        preprocessed = preprocess_pipeline(
+        preprocessed = run_preprocessing(
             image, 
-            config=preprocess_config, 
+            opts=preprocess_config, 
             image_id=image_id
         )
         
@@ -130,7 +126,7 @@ class PipelineService:
             'stage': 'pipeline_preprocess'
         })
         
-        # Step 2: ViT Classification (NEW ORDER)
+        # Step 2: ViT Classification
         logger.info("Step 2: ViT classification", extra={
             'image_id': image_id,
             'path': None,
@@ -139,9 +135,9 @@ class PipelineService:
         
         self._ensure_models_loaded()
         
-        # Use preprocessed image for classification
+        # Use preprocessed image for classification (final sharpened output)
         classification_results = self.vit.classify(
-            preprocessed['normalized'],
+            preprocessed['sharpened'],
             image_id=image_id
         )
         
@@ -184,7 +180,7 @@ class PipelineService:
             )
             
             tumor_segmentation_results = self.tumor_unet.segment_image(
-                preprocessed['normalized'],
+                preprocessed['sharpened'],
                 image_id=image_id
             )
             
@@ -212,7 +208,7 @@ class PipelineService:
             )
             
             tumor_segmentation2_results = self.tumor_unet2.segment_image(
-                preprocessed['normalized'],
+                preprocessed['sharpened'],
                 image_id=image_id
             )
             
