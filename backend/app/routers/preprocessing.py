@@ -112,11 +112,12 @@ async def preprocess_image(
                 original_url=storage.get_artifact_url(original_url),
                 grayscale_url=urls['grayscale'],
                 # Map new stages to response fields for backward compatibility
+                # Note: Legacy clients expect these field names, comprehensive clients use the extended fields below
                 denoised_url=urls['salt_pepper_cleaned'],
                 motion_reduced_url=urls['pma_corrected'],
                 contrast_url=urls['contrast_enhanced'],
                 sharpened_url=urls['sharpened'],
-                normalized_url=urls['sharpened'],  # Use sharpened as final stage
+                normalized_url=urls['sharpened'],  # Final stage for backward compat (no separate normalization in comprehensive mode)
                 # Additional stages (if frontend supports extended response)
                 salt_pepper_cleaned_url=urls.get('salt_pepper_cleaned'),
                 gaussian_denoised_url=urls.get('gaussian_denoised'),
