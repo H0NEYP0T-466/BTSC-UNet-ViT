@@ -4,7 +4,7 @@ Pipeline service for orchestrating preprocessing, tumor segmentation, and classi
 import time
 from typing import Dict, Optional
 import numpy as np
-from app.utils.preprocessing import preprocess_pipeline
+from app.utils.preprocessing import preprocess_pipeline, to_grayscale
 from app.models.unet.infer_unet import get_unet_inference
 from app.models.unet_tumor.infer_unet_tumor import get_unet_tumor_inference
 from app.models.vit.infer_vit import get_vit_inference
@@ -100,7 +100,6 @@ class PipelineService:
             })
             
             # Minimal processing: just convert to grayscale and normalize to [0, 255]
-            from app.utils.preprocessing import to_grayscale
             grayscale = to_grayscale(image, image_id=image_id)
             
             # Save minimal preprocessing artifacts

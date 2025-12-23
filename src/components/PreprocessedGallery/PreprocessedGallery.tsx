@@ -49,7 +49,7 @@ export function PreprocessedGallery({ images }: PreprocessedGalleryProps) {
           >
             <div className="gallery-image-container">
               <img
-                src={images[stage.key]}
+                src={images[stage.key]!}
                 alt={stage.label}
                 className="gallery-image"
                 onError={(e) => {
