@@ -67,18 +67,13 @@ def test_skip_preprocessing_parameter():
             assert len(result['preprocessing']) == 6
         
         # Test with skip_preprocessing=True (skip preprocessing)
-        with patch('app.utils.preprocessing.to_grayscale') as mock_grayscale:
-            mock_grayscale.return_value = np.zeros((256, 256), dtype=np.uint8)
-            
-            result = pipeline.run_inference(test_image, skip_preprocessing=True)
-            
-            # Verify to_grayscale was called but not full preprocessing
-            assert mock_grayscale.called, "to_grayscale should be called when skip_preprocessing=True"
-            assert 'preprocessing' in result
-            # With skip preprocessing, should only have grayscale and normalized (2 stages)
-            assert len(result['preprocessing']) == 2
-            assert 'grayscale' in result['preprocessing']
-            assert 'normalized' in result['preprocessing']
+        result = pipeline.run_inference(test_image, skip_preprocessing=True)
+        
+        # Verify no preprocessing was done - raw image passed directly
+        assert 'preprocessing' in result
+        # With skip preprocessing, should only have normalized (1 stage - raw image)
+        assert len(result['preprocessing']) == 1
+        assert 'normalized' in result['preprocessing']
 
 
 def test_config_values_reduced():

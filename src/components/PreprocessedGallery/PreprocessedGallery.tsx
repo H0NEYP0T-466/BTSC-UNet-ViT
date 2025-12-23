@@ -2,7 +2,7 @@ import './PreprocessedGallery.css';
 
 interface PreprocessedGalleryProps {
   images: {
-    [key: string]: string;
+    [key: string]: string | undefined;
   };
 }
 
