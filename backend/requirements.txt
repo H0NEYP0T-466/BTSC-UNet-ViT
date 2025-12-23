@@ -21,3 +21,4 @@ h5py==3.11.0
 nibabel==5.3.2
 SimpleITK==2.3.1
 PyYAML==6.0.2
+pytest==8.3.4
