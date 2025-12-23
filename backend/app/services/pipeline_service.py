@@ -117,11 +117,13 @@ class PipelineService:
             
             preprocess_config = {
                 'auto': True,  # Enable auto-detection
-                'max_size': 512,  # Resize to reduce memory usage
                 'clahe_clip_limit': settings.CLAHE_CLIP_LIMIT,
                 'clahe_tile_grid': settings.CLAHE_TILE_GRID_SIZE,
                 'sharpen_amount': settings.UNSHARP_AMOUNT,
+                'sharpen_radius': settings.UNSHARP_RADIUS,
                 'sharpen_threshold': settings.SHARPEN_THRESHOLD,
+                'skip_pma': settings.SKIP_PMA_CORRECTION,
+                'skip_deblur': settings.SKIP_DEBLUR,
             }
             
             preprocessed = run_preprocessing(
