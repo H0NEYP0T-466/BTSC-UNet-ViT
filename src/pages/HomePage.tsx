@@ -14,15 +14,16 @@ export function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<InferenceResponse | null>(null);
+  const [skipPreprocessing, setSkipPreprocessing] = useState(false);
 
   const handleUpload = async (file: File) => {
-    console.log('[HomePage] Starting inference for file:', file.name);
+    console.log('[HomePage] Starting inference for file:', file.name, 'skipPreprocessing:', skipPreprocessing);
     setIsLoading(true);
     setError(null);
     setResult(null);
 
     try {
-      const response = await apiClient.runInference(file);
+      const response = await apiClient.runInference(file, skipPreprocessing);
       console.log('[HomePage] Inference completed:', response);
       
       // Validate response structure
@@ -76,6 +77,26 @@ export function HomePage() {
             <div className="upload-section">
               <UploadCard onUpload={handleUpload} isLoading={isLoading} />
               
+              {/* Skip Preprocessing Toggle */}
+              <div className="preprocessing-toggle card" style={{ marginTop: '1rem', padding: '1rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={skipPreprocessing}
+                    onChange={(e) => setSkipPreprocessing(e.target.checked)}
+                    style={{ marginRight: '0.5rem', cursor: 'pointer' }}
+                    disabled={isLoading}
+                  />
+                  <span>
+                    <strong>Skip Preprocessing</strong>
+                    <br />
+                    <small style={{ color: '#666' }}>
+                      Use input image directly for ViT → (if tumor) UNet segmentation
+                    </small>
+                  </span>
+                </label>
+              </div>
+              
               {error && (
                 <div className="error-message">
                   <p className="error-text">⚠️ {error}</p>
@@ -98,14 +119,14 @@ export function HomePage() {
                 <div className="result-item">
                   <PreprocessedGallery
                     images={{
-                      grayscale: apiClient.getResourceUrl(result.preprocessing.grayscale),
-                      salt_pepper_cleaned: apiClient.getResourceUrl(result.preprocessing.salt_pepper_cleaned),
-                      gaussian_denoised: apiClient.getResourceUrl(result.preprocessing.gaussian_denoised),
-                      speckle_denoised: apiClient.getResourceUrl(result.preprocessing.speckle_denoised),
-                      pma_corrected: apiClient.getResourceUrl(result.preprocessing.pma_corrected),
-                      deblurred: apiClient.getResourceUrl(result.preprocessing.deblurred),
-                      contrast_enhanced: apiClient.getResourceUrl(result.preprocessing.contrast_enhanced),
-                      sharpened: apiClient.getResourceUrl(result.preprocessing.sharpened),
+                      grayscale: result.preprocessing.grayscale ? apiClient.getResourceUrl(result.preprocessing.grayscale) : undefined,
+                      salt_pepper_cleaned: result.preprocessing.salt_pepper_cleaned ? apiClient.getResourceUrl(result.preprocessing.salt_pepper_cleaned) : undefined,
+                      gaussian_denoised: result.preprocessing.gaussian_denoised ? apiClient.getResourceUrl(result.preprocessing.gaussian_denoised) : undefined,
+                      speckle_denoised: result.preprocessing.speckle_denoised ? apiClient.getResourceUrl(result.preprocessing.speckle_denoised) : undefined,
+                      pma_corrected: result.preprocessing.pma_corrected ? apiClient.getResourceUrl(result.preprocessing.pma_corrected) : undefined,
+                      deblurred: result.preprocessing.deblurred ? apiClient.getResourceUrl(result.preprocessing.deblurred) : undefined,
+                      contrast_enhanced: result.preprocessing.contrast_enhanced ? apiClient.getResourceUrl(result.preprocessing.contrast_enhanced) : undefined,
+                      sharpened: result.preprocessing.sharpened ? apiClient.getResourceUrl(result.preprocessing.sharpened) : undefined,
                     }}
                   />
                 </div>

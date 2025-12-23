@@ -87,10 +87,11 @@ class ApiClient {
   /**
    * Run full inference pipeline.
    */
-  async runInference(file: File): Promise<InferenceResponse> {
-    console.log('[API] Starting full inference pipeline');
+  async runInference(file: File, skipPreprocessing: boolean = false): Promise<InferenceResponse> {
+    console.log('[API] Starting full inference pipeline (skipPreprocessing:', skipPreprocessing, ')');
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('skip_preprocessing', skipPreprocessing.toString());
     
     const response = await this.client.post<InferenceResponse>('/api/inference', formData);
     console.log('[API] Inference completed:', response.data);

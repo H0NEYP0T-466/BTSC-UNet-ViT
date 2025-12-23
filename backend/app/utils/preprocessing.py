@@ -31,6 +31,64 @@ from app.utils.btsc_preprocess import (
 logger = get_logger(__name__)
 
 
+def resize_image(
+    image: np.ndarray,
+    max_size: int = 512,
+    image_id: Optional[str] = None
+) -> np.ndarray:
+    """
+    Resize image to reduce memory usage while preserving aspect ratio.
+    
+    Images larger than max_size in either dimension will be scaled down
+    proportionally. Smaller images are left unchanged.
+    
+    Args:
+        image: Input image (RGB or grayscale)
+        max_size: Maximum dimension size (default: 512)
+        image_id: Image identifier for logging
+        
+    Returns:
+        Resized image
+    """
+    start_time = time.time()
+    h, w = image.shape[:2]
+    
+    # Only resize if image is larger than max_size
+    if h <= max_size and w <= max_size:
+        logger.info(f"Image already optimal size ({h}x{w}), skipping resize", extra={
+            'image_id': image_id,
+            'path': None,
+            'stage': 'resize'
+        })
+        return image
+    
+    # Calculate new dimensions preserving aspect ratio
+    if h > w:
+        new_h = max_size
+        new_w = int(w * (max_size / h))
+    else:
+        new_w = max_size
+        new_h = int(h * (max_size / w))
+    
+    logger.info(f"Resizing image from {h}x{w} to {new_h}x{new_w} (max_size={max_size})", extra={
+        'image_id': image_id,
+        'path': None,
+        'stage': 'resize'
+    })
+    
+    # Use INTER_AREA for downscaling (best quality)
+    resized = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+    
+    duration = time.time() - start_time
+    logger.info(f"Image resized in {duration:.3f}s", extra={
+        'image_id': image_id,
+        'path': None,
+        'stage': 'resize'
+    })
+    
+    return resized
+
+
 def to_grayscale(image: np.ndarray, image_id: Optional[str] = None) -> np.ndarray:
     """
     Convert image to grayscale if needed.
@@ -495,6 +553,7 @@ def run_preprocessing(
     Run intelligent preprocessing pipeline with auto-detection.
     
     This pipeline detects and corrects specific image quality issues:
+    - Image size: Resizes large images to reduce memory usage
     - Noise: Salt & Pepper, Gaussian, Speckle
     - Blur: Gaussian, Bilateral, Median
     - Motion: Patient Motion Artifacts (PMA)
@@ -506,6 +565,7 @@ def run_preprocessing(
         image: Input image (RGB or grayscale)
         opts: Options dict:
             - auto: bool - Auto-detect and apply corrections (default: True)
+            - max_size: int - Maximum image dimension in pixels (default: 512)
             - clahe_clip_limit: float - CLAHE clip limit (default: 1.5, reduced from 2.0)
             - clahe_tile_grid: tuple - CLAHE tile grid (default: (8, 8))
             - sharpen_amount: float - Sharpening strength (default: 0.8, reduced from 1.2)
@@ -514,6 +574,7 @@ def run_preprocessing(
         
     Returns:
         Dictionary with all preprocessing stages:
+        - resized: Resized image (if needed)
         - grayscale: Grayscale conversion
         - salt_pepper_cleaned: After salt & pepper removal (if detected)
         - gaussian_denoised: After Gaussian noise removal (if detected)
@@ -532,6 +593,7 @@ def run_preprocessing(
     
     opts = opts or {}
     auto_detect = opts.get('auto', True)
+    max_size = opts.get('max_size', 512)  # Maximum image dimension
     
     # Conservative parameters to avoid white noise/over-processing
     clahe_clip = opts.get('clahe_clip_limit', 1.5)  # Reduced from 2.0
@@ -541,8 +603,12 @@ def run_preprocessing(
     
     results = {}
     
+    # Step 0: Resize image to reduce memory usage (NEW!)
+    resized = resize_image(image, max_size=max_size, image_id=image_id)
+    results['resized'] = resized
+    
     # Step 1: Convert to grayscale
-    grayscale = to_grayscale(image, image_id=image_id)
+    grayscale = to_grayscale(resized, image_id=image_id)
     results['grayscale'] = grayscale
     
     # Working image starts as grayscale
@@ -558,14 +624,14 @@ def run_preprocessing(
             'stage': 'noise_detection'
         })
         
-        # Salt & Pepper: Best fixed with median filter
+        # Salt & Pepper: Best fixed with enhanced adaptive median filter
         if noise_info['type'] == 'salt_pepper' or noise_info['scores'].get('salt_pepper', 0) > 0.3:
-            logger.info("Applying salt & pepper removal (median filter)", extra={
+            logger.info("Applying enhanced salt & pepper removal (adaptive median filter)", extra={
                 'image_id': image_id,
                 'path': None,
                 'stage': 'salt_pepper_removal'
             })
-            current = remove_salt_and_pepper(current, max_kernel=7, image_id=image_id)
+            current = remove_salt_and_pepper(current, max_kernel=9, image_id=image_id)
             results['salt_pepper_cleaned'] = current
         else:
             # No salt & pepper detected, pass through unchanged
