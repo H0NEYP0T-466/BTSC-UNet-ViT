@@ -42,11 +42,11 @@ export interface InferenceResponse {
   image_id: string;
   original_url: string;
   preprocessing: {
-    grayscale: string;
-    denoised: string;
-    motion_reduced: string;
-    contrast: string;
-    sharpened: string;
+    grayscale?: string;
+    denoised?: string;
+    motion_reduced?: string;
+    contrast?: string;
+    sharpened?: string;
     normalized: string;
   };
   tumor_segmentation?: {
