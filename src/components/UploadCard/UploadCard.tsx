@@ -3,12 +3,13 @@ import type { DragEvent, ChangeEvent } from 'react';
 import './UploadCard.css';
 
 interface UploadCardProps {
-  onUpload: (file: File) => void;
+  onUpload: (file: File, skipPreprocessing: boolean) => void;
   isLoading: boolean;
 }
 
 export function UploadCard({ onUpload, isLoading }: UploadCardProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const [skipPreprocessing, setSkipPreprocessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
@@ -38,7 +39,7 @@ export function UploadCard({ onUpload, isLoading }: UploadCardProps) {
       const file = files[0];
       if (file.type.startsWith('image/')) {
         console.log('[UploadCard] File dropped:', file.name);
-        onUpload(file);
+        onUpload(file, skipPreprocessing);
       } else {
         alert('Please upload an image file');
       }
@@ -50,7 +51,7 @@ export function UploadCard({ onUpload, isLoading }: UploadCardProps) {
     if (files && files.length > 0) {
       const file = files[0];
       console.log('[UploadCard] File selected:', file.name);
-      onUpload(file);
+      onUpload(file, skipPreprocessing);
     }
   };
 
@@ -61,6 +62,27 @@ export function UploadCard({ onUpload, isLoading }: UploadCardProps) {
   return (
     <div className="upload-card card">
       <h2 className="upload-title">Upload Brain MRI Image</h2>
+      
+      {/* Preprocessing toggle */}
+      <div className="upload-options">
+        <label className="toggle-container">
+          <input
+            type="checkbox"
+            checked={skipPreprocessing}
+            onChange={(e) => setSkipPreprocessing(e.target.checked)}
+            disabled={isLoading}
+          />
+          <span className="toggle-label">
+            Skip preprocessing (direct to ViT)
+          </span>
+        </label>
+        <p className="toggle-hint">
+          {skipPreprocessing 
+            ? "⚡ Fast mode: Image goes directly to classification" 
+            : "🔧 Full pipeline: Includes denoising, contrast enhancement, and sharpening"}
+        </p>
+      </div>
+      
       <div
         className={`upload-zone ${isDragging ? 'dragging' : ''} ${isLoading ? 'loading' : ''}`}
         onDragEnter={handleDragEnter}

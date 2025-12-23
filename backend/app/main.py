@@ -61,19 +61,29 @@ async def root():
 
 
 @app.post(f"{settings.API_PREFIX}/inference", response_model=InferenceResponse)
-async def run_inference(file: UploadFile = File(...)):
+async def run_inference(
+    file: UploadFile = File(...),
+    skip_preprocessing: bool = False
+):
     """
     Run full inference pipeline: preprocessing -> tumor segmentation -> classification.
     
     This is the main endpoint that orchestrates all stages.
+    
+    Args:
+        file: Uploaded image file
+        skip_preprocessing: If True, skip preprocessing and pass image directly to ViT
     """
     start_time = time.time()
     
-    logger.info(f"Received full inference request: filename={file.filename}", extra={
-        'image_id': None,
-        'path': file.filename,
-        'stage': 'inference_request'
-    })
+    logger.info(
+        f"Received full inference request: filename={file.filename}, skip_preprocessing={skip_preprocessing}",
+        extra={
+            'image_id': None,
+            'path': file.filename,
+            'stage': 'inference_request'
+        }
+    )
     
     try:
         # Read image bytes
@@ -82,7 +92,7 @@ async def run_inference(file: UploadFile = File(...)):
         
         # Run pipeline
         pipeline = get_pipeline_service()
-        result = pipeline.run_inference(image)
+        result = pipeline.run_inference(image, skip_preprocessing=skip_preprocessing)
         
         duration = time.time() - start_time
         

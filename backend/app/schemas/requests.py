@@ -25,5 +25,7 @@ class ClassifyRequest(BaseModel):
 
 class InferenceRequest(BaseModel):
     """Request for full inference pipeline."""
-    # File will be handled via FastAPI's UploadFile
-    pass
+    skip_preprocessing: Optional[bool] = Field(
+        default=False,
+        description="Skip preprocessing pipeline and pass image directly to ViT"
+    )

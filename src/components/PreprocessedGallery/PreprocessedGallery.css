@@ -8,6 +8,13 @@
   text-align: center;
 }
 
+.gallery-subtitle {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: normal;
+  margin-left: var(--spacing-sm);
+}
+
 .gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

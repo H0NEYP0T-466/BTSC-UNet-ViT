@@ -15,14 +15,14 @@ export function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<InferenceResponse | null>(null);
 
-  const handleUpload = async (file: File) => {
-    console.log('[HomePage] Starting inference for file:', file.name);
+  const handleUpload = async (file: File, skipPreprocessing: boolean) => {
+    console.log('[HomePage] Starting inference for file:', file.name, 'skipPreprocessing:', skipPreprocessing);
     setIsLoading(true);
     setError(null);
     setResult(null);
 
     try {
-      const response = await apiClient.runInference(file);
+      const response = await apiClient.runInference(file, skipPreprocessing);
       console.log('[HomePage] Inference completed:', response);
       
       // Validate response structure
@@ -98,11 +98,11 @@ export function HomePage() {
                 <div className="result-item">
                   <PreprocessedGallery
                     images={{
-                      grayscale: apiClient.getResourceUrl(result.preprocessing.grayscale),
-                      denoised: apiClient.getResourceUrl(result.preprocessing.denoised),
-                      motion_reduced: apiClient.getResourceUrl(result.preprocessing.motion_reduced),
-                      contrast: apiClient.getResourceUrl(result.preprocessing.contrast),
-                      sharpened: apiClient.getResourceUrl(result.preprocessing.sharpened),
+                      grayscale: result.preprocessing.grayscale ? apiClient.getResourceUrl(result.preprocessing.grayscale) : undefined,
+                      denoised: result.preprocessing.denoised ? apiClient.getResourceUrl(result.preprocessing.denoised) : undefined,
+                      motion_reduced: result.preprocessing.motion_reduced ? apiClient.getResourceUrl(result.preprocessing.motion_reduced) : undefined,
+                      contrast: result.preprocessing.contrast ? apiClient.getResourceUrl(result.preprocessing.contrast) : undefined,
+                      sharpened: result.preprocessing.sharpened ? apiClient.getResourceUrl(result.preprocessing.sharpened) : undefined,
                       normalized: apiClient.getResourceUrl(result.preprocessing.normalized),
                     }}
                   />

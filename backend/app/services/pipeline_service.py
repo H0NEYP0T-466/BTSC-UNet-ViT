@@ -4,7 +4,7 @@ Pipeline service for orchestrating preprocessing, tumor segmentation, and classi
 import time
 from typing import Dict, Optional
 import numpy as np
-from app.utils.preprocessing import preprocess_pipeline
+from app.utils.preprocessing import preprocess_pipeline, to_grayscale
 from app.models.unet.infer_unet import get_unet_inference
 from app.models.unet_tumor.infer_unet_tumor import get_unet_tumor_inference
 from app.models.vit.infer_vit import get_vit_inference
@@ -61,17 +61,18 @@ class PipelineService:
             })
             self.vit = get_vit_inference()
     
-    def run_inference(self, image: np.ndarray) -> Dict:
+    def run_inference(self, image: np.ndarray, skip_preprocessing: bool = False) -> Dict:
         """
         Run full inference pipeline.
         
         Pipeline flow (NEW):
-        1. Preprocessing (grayscale, denoise, contrast, sharpen, normalize)
+        1. Preprocessing (grayscale, denoise, contrast, sharpen, normalize) - OPTIONAL
         2. ViT Classification (classify tumor type)
         3. Conditional Tumor Segmentation (only if tumor detected)
         
         Args:
             image: Input image (RGB or grayscale)
+            skip_preprocessing: If True, skip preprocessing and pass image directly to ViT
             
         Returns:
             Dictionary with all results and artifact URLs
@@ -90,45 +91,72 @@ class PipelineService:
         # Save original image
         original_url = self.storage.save_upload(image, image_id)
         
-        # Step 1: Preprocessing
-        logger.info("Step 1: Preprocessing", extra={
-            'image_id': image_id,
-            'path': None,
-            'stage': 'pipeline_preprocess'
-        })
-        
-        preprocess_config = {
-            'median_kernel_size': settings.MEDIAN_KERNEL_SIZE,
-            'clahe_clip_limit': settings.CLAHE_CLIP_LIMIT,
-            'clahe_tile_grid_size': settings.CLAHE_TILE_GRID_SIZE,
-            'unsharp_radius': settings.UNSHARP_RADIUS,
-            'unsharp_amount': settings.UNSHARP_AMOUNT,
-            'preserve_detail': settings.MOTION_PRESERVE_DETAIL,
-            'normalize_method': 'zscore',
-            'use_nlm_denoising': True,
-            'nlm_h': settings.NLM_H
-        }
-        
-        preprocessed = preprocess_pipeline(
-            image, 
-            config=preprocess_config, 
-            image_id=image_id
-        )
-        
-        # Save preprocessing artifacts (only numpy arrays, skip nested dicts)
-        preprocess_urls = {}
-        for stage_name, stage_image in preprocessed.items():
-            # Skip nested dictionaries for defensive programming
-            if isinstance(stage_image, dict):
-                continue
-            url = self.storage.save_artifact(stage_image, image_id, stage_name)
-            preprocess_urls[stage_name] = self.storage.get_artifact_url(url)
-        
-        logger.info("Preprocessing completed, passing to next layer: ViT classification", extra={
-            'image_id': image_id,
-            'path': None,
-            'stage': 'pipeline_preprocess'
-        })
+        # Step 1: Preprocessing (CONDITIONAL)
+        if skip_preprocessing:
+            logger.info("Skipping preprocessing pipeline (skip_preprocessing=True)", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'pipeline_preprocess'
+            })
+            
+            # Minimal processing: just convert to grayscale and normalize to [0, 255]
+            grayscale = to_grayscale(image, image_id=image_id)
+            
+            # Save minimal preprocessing artifacts
+            preprocess_urls = {
+                'grayscale': self.storage.get_artifact_url(
+                    self.storage.save_artifact(grayscale, image_id, 'grayscale')
+                ),
+                'normalized': self.storage.get_artifact_url(
+                    self.storage.save_artifact(grayscale, image_id, 'normalized')
+                )
+            }
+            
+            # Use grayscale as the final preprocessed image
+            preprocessed_image = grayscale
+            
+        else:
+            logger.info("Step 1: Preprocessing", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'pipeline_preprocess'
+            })
+            
+            preprocess_config = {
+                'median_kernel_size': settings.MEDIAN_KERNEL_SIZE,
+                'clahe_clip_limit': settings.CLAHE_CLIP_LIMIT,
+                'clahe_tile_grid_size': settings.CLAHE_TILE_GRID_SIZE,
+                'unsharp_radius': settings.UNSHARP_RADIUS,
+                'unsharp_amount': settings.UNSHARP_AMOUNT,
+                'preserve_detail': settings.MOTION_PRESERVE_DETAIL,
+                'normalize_method': 'zscore',
+                'use_nlm_denoising': True,
+                'nlm_h': settings.NLM_H
+            }
+            
+            preprocessed = preprocess_pipeline(
+                image, 
+                config=preprocess_config, 
+                image_id=image_id
+            )
+            
+            # Save preprocessing artifacts (only numpy arrays, skip nested dicts)
+            preprocess_urls = {}
+            for stage_name, stage_image in preprocessed.items():
+                # Skip nested dictionaries for defensive programming
+                if isinstance(stage_image, dict):
+                    continue
+                url = self.storage.save_artifact(stage_image, image_id, stage_name)
+                preprocess_urls[stage_name] = self.storage.get_artifact_url(url)
+            
+            # Use normalized image as the final preprocessed image
+            preprocessed_image = preprocessed['normalized']
+            
+            logger.info("Preprocessing completed, passing to next layer: ViT classification", extra={
+                'image_id': image_id,
+                'path': None,
+                'stage': 'pipeline_preprocess'
+            })
         
         # Step 2: ViT Classification (NEW ORDER)
         logger.info("Step 2: ViT classification", extra={
@@ -141,7 +169,7 @@ class PipelineService:
         
         # Use preprocessed image for classification
         classification_results = self.vit.classify(
-            preprocessed['normalized'],
+            preprocessed_image,
             image_id=image_id
         )
         
@@ -184,7 +212,7 @@ class PipelineService:
             )
             
             tumor_segmentation_results = self.tumor_unet.segment_image(
-                preprocessed['normalized'],
+                preprocessed_image,
                 image_id=image_id
             )
             
@@ -212,7 +240,7 @@ class PipelineService:
             )
             
             tumor_segmentation2_results = self.tumor_unet2.segment_image(
-                preprocessed['normalized'],
+                preprocessed_image,
                 image_id=image_id
             )
             
