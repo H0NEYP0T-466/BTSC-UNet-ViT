@@ -101,6 +101,9 @@ class PipelineService:
             })
             
             # Use original image directly with NO preprocessing (not even resize or grayscale)
+            # Models will handle necessary format conversions internally:
+            # - ViT will convert grayscale → RGB if needed
+            # - UNet will convert RGB → grayscale if needed
             preprocessed_image = image
             
             # Don't save any preprocessing artifacts when skipping
