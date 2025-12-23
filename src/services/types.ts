@@ -17,14 +17,6 @@ export interface PreprocessResponse {
   contrast_url: string;
   sharpened_url: string;
   normalized_url: string;
-  // Extended comprehensive pipeline stages (optional)
-  salt_pepper_cleaned_url?: string;
-  gaussian_denoised_url?: string;
-  speckle_denoised_url?: string;
-  pma_corrected_url?: string;
-  deblurred_url?: string;
-  contrast_enhanced_url?: string;
-  sharpened_url2?: string;
   log_context: LogContext;
 }
 

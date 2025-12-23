@@ -9,62 +9,35 @@ interface PreprocessedGalleryProps {
 interface Stage {
   key: string;
   label: string;
-  tooltip: string;
   isFinal?: boolean;
 }
 
 export function PreprocessedGallery({ images }: PreprocessedGalleryProps) {
-  // Determine which pipeline mode based on available images
-  const hasComprehensiveStages = images.salt_pepper_cleaned_url || 
-                                   images.gaussian_denoised_url || 
-                                   images.speckle_denoised_url;
+  const FINAL_STAGE = 'normalized';
   
-  // Define comprehensive 8-stage pipeline
-  const comprehensiveStages: Stage[] = [
-    { key: 'grayscale_url', label: 'Grayscale', tooltip: 'Original converted to grayscale' },
-    { key: 'salt_pepper_cleaned_url', label: 'Salt & Pepper Cleaned', tooltip: 'Adaptive median filtering for impulse noise' },
-    { key: 'gaussian_denoised_url', label: 'Gaussian Denoised', tooltip: 'Non-Local Means denoising' },
-    { key: 'speckle_denoised_url', label: 'Speckle Denoised', tooltip: 'Wavelet BayesShrink for multiplicative noise' },
-    { key: 'pma_corrected_url', label: 'Motion Artifact Corrected', tooltip: 'RL/Wiener with estimated motion PSF' },
-    { key: 'deblurred_url', label: 'Deblurred', tooltip: 'Wiener/USM deblurring based on blur type' },
-    { key: 'contrast_enhanced_url', label: 'Contrast Enhanced', tooltip: 'CLAHE with conservative parameters' },
-    { key: 'sharpened_url2', label: 'Sharpened', tooltip: 'Noise-aware unsharp mask with detail thresholding', isFinal: true },
+  const stages: Stage[] = [
+    { key: 'grayscale', label: 'Grayscale' },
+    { key: 'denoised', label: 'Denoised' },
+    { key: 'motion_reduced', label: 'Motion Reduced' },
+    { key: 'contrast', label: 'Contrast Enhanced' },
+    { key: 'sharpened', label: 'Sharpened' },
+    { key: FINAL_STAGE, label: 'Normalized (Final)', isFinal: true },
   ];
-  
-  // Define legacy 6-stage pipeline
-  const legacyStages: Stage[] = [
-    { key: 'grayscale_url', label: 'Grayscale', tooltip: 'Original converted to grayscale' },
-    { key: 'denoised_url', label: 'Denoised', tooltip: 'Edge-preserving noise reduction' },
-    { key: 'motion_reduced_url', label: 'Motion Reduced', tooltip: 'Minimal bilateral filtering' },
-    { key: 'contrast_url', label: 'Contrast Enhanced', tooltip: 'CLAHE applied within brain mask' },
-    { key: 'sharpened_url', label: 'Sharpened', tooltip: 'Unsharp mask for detail recovery' },
-    { key: 'normalized_url', label: 'Normalized (Final)', tooltip: 'Z-score normalized', isFinal: true },
-  ];
-  
-  const stages = hasComprehensiveStages ? comprehensiveStages : legacyStages;
-  
+
   // Defensive programming: check if all required images are present
-  const availableStages = stages.filter(stage => images[stage.key]);
   const missingStages = stages.filter(stage => !images[stage.key]);
-  
   if (missingStages.length > 0) {
-    console.info('[PreprocessedGallery] Missing stages:', missingStages.map(s => s.key));
+    console.error('[PreprocessedGallery] Missing image stages:', missingStages.map(s => s.key));
   }
 
   return (
     <div className="preprocessed-gallery card">
-      <h3 className="gallery-title">
-        Preprocessing Stages
-        <span className="gallery-subtitle">
-          {hasComprehensiveStages ? '8-Stage Comprehensive Pipeline' : '6-Stage Legacy Pipeline'}
-        </span>
-      </h3>
+      <h3 className="gallery-title">Preprocessing Stages</h3>
       <div className="gallery-grid">
-        {availableStages.map((stage, index) => (
+        {stages.map((stage) => (
           <div 
             key={stage.key} 
             className={`gallery-item ${stage.isFinal ? 'gallery-item-final' : ''}`}
-            title={stage.tooltip}
           >
             <div className="gallery-image-container">
               {images[stage.key] ? (
@@ -82,30 +55,13 @@ export function PreprocessedGallery({ images }: PreprocessedGalleryProps) {
                   Image not available
                 </div>
               )}
-              <div className="stage-number">{index + 1}</div>
               {stage.isFinal && (
                 <div className="final-badge">→ To Models</div>
               )}
             </div>
-            <p className="gallery-label" title={stage.tooltip}>
-              {stage.label}
-            </p>
+            <p className="gallery-label">{stage.label}</p>
           </div>
         ))}
-      </div>
-      <div className="gallery-footer">
-        <p className="gallery-info">
-          {hasComprehensiveStages ? (
-            <>
-              ✨ <strong>Comprehensive Pipeline:</strong> Advanced noise removal (S&amp;P, Gaussian, Speckle), 
-              motion correction, deblurring, and artifact-free enhancement
-            </>
-          ) : (
-            <>
-              <strong>Legacy Pipeline:</strong> Basic denoising and enhancement
-            </>
-          )}
-        </p>
       </div>
     </div>
   );

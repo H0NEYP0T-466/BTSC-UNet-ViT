@@ -14,63 +14,6 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def create_brain_mask(
-    image: np.ndarray,
-    threshold_value: int = 10,
-    image_id: Optional[str] = None
-) -> np.ndarray:
-    """
-    Create an automatic brain mask using thresholding and morphological operations.
-    This mask is used to apply preprocessing only to the brain region,
-    avoiding artifacts on the black background.
-    
-    Args:
-        image: Input grayscale image (uint8)
-        threshold_value: Minimum intensity to consider as brain tissue
-        image_id: Image identifier for logging
-        
-    Returns:
-        Binary mask (0 = background, 255 = brain region)
-    """
-    start_time = time.time()
-    logger.info(f"Creating automatic brain mask (threshold={threshold_value})", extra={
-        'image_id': image_id,
-        'path': None,
-        'stage': 'brain_mask_creation'
-    })
-    
-    # Apply fixed threshold to separate brain from background
-    # Using a low threshold (default 10) to include most brain tissue
-    _, mask = cv2.threshold(image, threshold_value, 255, cv2.THRESH_BINARY)
-    
-    # Apply morphological operations to clean up the mask
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-    
-    # Close small holes in the mask
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
-    
-    # Open to remove small noise regions
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
-    
-    # Fill internal holes using contour-based approach
-    # Find contours and fill them to handle any internal holes
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if contours:
-        # Create a filled mask from the largest contour (brain region)
-        mask_filled = np.zeros_like(mask)
-        cv2.drawContours(mask_filled, contours, -1, 255, cv2.FILLED)
-        mask = mask_filled
-    
-    duration = time.time() - start_time
-    logger.info(f"Brain mask created in {duration:.3f}s, coverage: {np.sum(mask > 0) / mask.size * 100:.1f}%", extra={
-        'image_id': image_id,
-        'path': None,
-        'stage': 'brain_mask_creation'
-    })
-    
-    return mask
-
-
 def to_grayscale(image: np.ndarray, image_id: Optional[str] = None) -> np.ndarray:
     """
     Convert image to grayscale if needed.
@@ -370,16 +313,14 @@ def reduce_motion_artifact(
 def normalize_image(
     image: np.ndarray,
     method: str = "zscore",
-    mask: Optional[np.ndarray] = None,
     image_id: Optional[str] = None
 ) -> np.ndarray:
     """
-    Normalize image intensity, optionally only within a mask region.
+    Normalize image intensity.
     
     Args:
         image: Input grayscale image
         method: Normalization method ('zscore' or 'minmax')
-        mask: Optional binary mask to normalize only inside mask (0 = background, 255 = foreground)
         image_id: Image identifier for logging
         
     Returns:
@@ -394,70 +335,26 @@ def normalize_image(
     
     img_float = image.astype(np.float32)
     
-    if mask is not None:
-        # Normalize only within the masked region to avoid background artifacts
-        logger.info("Applying normalization inside brain mask only", extra={
+    if method == "zscore":
+        mean = np.mean(img_float)
+        std = np.std(img_float)
+        normalized = (img_float - mean) / (std + 1e-8)
+        # Scale back to [0, 255]
+        normalized = ((normalized - normalized.min()) / (normalized.max() - normalized.min()) * 255)
+        logger.info(f"Z-score normalization: mean={mean:.2f}, std={std:.2f}", extra={
             'image_id': image_id,
             'path': None,
             'stage': 'normalization'
         })
-        
-        # Get values only inside the mask for computing statistics
-        mask_bool = mask > 0
-        masked_values = img_float[mask_bool]
-        
-        if method == "zscore":
-            mean = np.mean(masked_values)
-            std = np.std(masked_values)
-            # Normalize the entire image but only change values inside the mask
-            normalized = img_float.copy()
-            normalized[mask_bool] = (masked_values - mean) / (std + 1e-8)
-            # Scale masked region back to [0, 255]
-            masked_norm = normalized[mask_bool]
-            if masked_norm.max() != masked_norm.min():
-                normalized[mask_bool] = ((masked_norm - masked_norm.min()) / 
-                                          (masked_norm.max() - masked_norm.min()) * 255)
-            # Keep background as black (0)
-            normalized[~mask_bool] = 0
-            logger.info(f"Z-score normalization (masked): mean={mean:.2f}, std={std:.2f}", extra={
-                'image_id': image_id,
-                'path': None,
-                'stage': 'normalization'
-            })
-        else:  # minmax
-            min_val = np.min(masked_values)
-            max_val = np.max(masked_values)
-            normalized = img_float.copy()
-            normalized[mask_bool] = (masked_values - min_val) / (max_val - min_val + 1e-8) * 255
-            # Keep background as black (0)
-            normalized[~mask_bool] = 0
-            logger.info(f"Min-max normalization (masked): min={min_val:.2f}, max={max_val:.2f}", extra={
-                'image_id': image_id,
-                'path': None,
-                'stage': 'normalization'
-            })
-    else:
-        # Original behavior: normalize entire image
-        if method == "zscore":
-            mean = np.mean(img_float)
-            std = np.std(img_float)
-            normalized = (img_float - mean) / (std + 1e-8)
-            # Scale back to [0, 255]
-            normalized = ((normalized - normalized.min()) / (normalized.max() - normalized.min()) * 255)
-            logger.info(f"Z-score normalization: mean={mean:.2f}, std={std:.2f}", extra={
-                'image_id': image_id,
-                'path': None,
-                'stage': 'normalization'
-            })
-        else:  # minmax
-            min_val = np.min(img_float)
-            max_val = np.max(img_float)
-            normalized = (img_float - min_val) / (max_val - min_val + 1e-8) * 255
-            logger.info(f"Min-max normalization: min={min_val:.2f}, max={max_val:.2f}", extra={
-                'image_id': image_id,
-                'path': None,
-                'stage': 'normalization'
-            })
+    else:  # minmax
+        min_val = np.min(img_float)
+        max_val = np.max(img_float)
+        normalized = (img_float - min_val) / (max_val - min_val + 1e-8) * 255
+        logger.info(f"Min-max normalization: min={min_val:.2f}, max={max_val:.2f}", extra={
+            'image_id': image_id,
+            'path': None,
+            'stage': 'normalization'
+        })
     
     normalized = normalized.astype(np.uint8)
     
@@ -530,41 +427,28 @@ def preprocess_pipeline(
         preserve_detail=config.get('preserve_detail', True)
     )
     
-    # Create automatic brain mask to prevent artifacts on background
-    # This mask is used for CLAHE, sharpening, and normalization
-    # to avoid whitish lines and tile artifacts on the black background
-    use_brain_mask = config.get('use_brain_mask', True)
-    brain_mask = None
-    if use_brain_mask:
-        brain_mask = create_brain_mask(
-            motion_reduced,
-            threshold_value=config.get('brain_mask_threshold', 10),
-            image_id=image_id
-        )
-    
-    # Step 4: Enhance contrast (CLAHE) - apply within brain mask to avoid tile artifacts
+    # Step 4: Enhance contrast (CLAHE)
     contrast = enhance_contrast_clahe(
         motion_reduced,
         clip_limit=config.get('clahe_clip_limit', 2.0),
         tile_grid_size=config.get('clahe_tile_grid_size', (8, 8)),
-        mask=brain_mask,
+        mask=None,
         image_id=image_id
     )
     
-    # Step 5: Sharpen (recover fine details) - apply within brain mask to avoid edge artifacts
+    # Step 5: Sharpen (recover fine details)
     sharpened = unsharp_mask(
         contrast,
         radius=config.get('unsharp_radius', 1.5),
         amount=config.get('unsharp_amount', 1.5),
-        mask=brain_mask,
+        mask=None,
         image_id=image_id
     )
     
-    # Step 6: Normalize (standardize intensity range) - apply within brain mask
+    # Step 6: Normalize (standardize intensity range)
     normalized = normalize_image(
         sharpened,
         method=config.get('normalize_method', 'zscore'),
-        mask=brain_mask,
         image_id=image_id
     )
     
@@ -582,163 +466,4 @@ def preprocess_pipeline(
         'contrast': contrast,
         'sharpened': sharpened,
         'normalized': normalized
-    }
-
-
-def run_preprocessing(
-    image: np.ndarray,
-    opts: Optional[Dict] = None,
-    image_id: Optional[str] = None
-) -> Dict[str, np.ndarray]:
-    """
-    Run comprehensive preprocessing pipeline with quality-aware stages.
-    
-    Pipeline stages (in order):
-    1. Grayscale conversion
-    2. Salt & Pepper noise removal (adaptive median)
-    3. Gaussian denoising (NLM)
-    4. Speckle denoising (wavelet)
-    5. Motion artifact correction (RL/Wiener with motion PSF)
-    6. Deblurring (Wiener/USM based on blur type)
-    7. Contrast enhancement (CLAHE)
-    8. Noise-aware sharpening (USM with detail mask)
-    
-    Args:
-        image: Input image (RGB or grayscale)
-        opts: Optional configuration dict:
-            - auto: bool (default True) - auto-detect quality issues
-            - noise_type: "salt_pepper" | "gaussian" | "speckle" | "none"
-            - blur_type: "gaussian" | "bilateral" | "median" | "none"
-            - motion: bool - enable motion correction
-        image_id: Image identifier for logging
-        
-    Returns:
-        Dictionary with all stage images:
-            'grayscale', 'salt_pepper_cleaned', 'gaussian_denoised',
-            'speckle_denoised', 'pma_corrected', 'deblurred',
-            'contrast_enhanced', 'sharpened'
-    """
-    from app.utils.btsc_preprocess import (
-        remove_salt_and_pepper,
-        denoise_gaussian_nlmeans,
-        denoise_speckle_wavelet,
-        correct_motion_artifacts,
-        deblur_gaussian_wiener,
-        deblur_edge_aware_usm,
-        clahe_enhance,
-        sharpen_noise_aware,
-        detect_noise_type,
-        detect_blur,
-        detect_motion,
-    )
-    
-    start_time = time.time()
-    logger.info("Comprehensive preprocessing pipeline started", extra={
-        'image_id': image_id,
-        'path': None,
-        'stage': 'comprehensive_preprocess'
-    })
-    
-    opts = opts or {}
-    auto_detect = opts.get('auto', True)
-    
-    # Stage 1: Convert to grayscale
-    grayscale = to_grayscale(image, image_id=image_id)
-    
-    # Auto-detect quality issues if enabled
-    if auto_detect:
-        noise_info = detect_noise_type(grayscale, image_id=image_id)
-        blur_info = detect_blur(grayscale, image_id=image_id)
-        motion_info = detect_motion(grayscale, image_id=image_id)
-        
-        detected_noise = noise_info['type']
-        needs_deblur = blur_info['is_blurred']
-        has_motion = motion_info['has_motion']
-        
-        logger.info(f"Auto-detect: noise={detected_noise}, blur={needs_deblur}, motion={has_motion}", extra={
-            'image_id': image_id,
-            'path': None,
-            'stage': 'quality_detect'
-        })
-    else:
-        # Use manual overrides from opts
-        detected_noise = opts.get('noise_type', 'none')
-        needs_deblur = opts.get('blur_type') is not None
-        has_motion = opts.get('motion', False)
-    
-    # Stage 2: Salt & Pepper noise removal
-    # Always apply lightly to be safe, but more aggressive if detected
-    if detected_noise == 'salt_pepper':
-        salt_pepper_cleaned = remove_salt_and_pepper(grayscale, max_kernel=7, image_id=image_id)
-    else:
-        # Light pass even if not detected
-        salt_pepper_cleaned = remove_salt_and_pepper(grayscale, max_kernel=3, image_id=image_id)
-    
-    # Stage 3: Gaussian denoising (NLM)
-    if detected_noise == 'gaussian' or detected_noise == 'none':
-        # Apply with moderate strength
-        gaussian_denoised = denoise_gaussian_nlmeans(salt_pepper_cleaned, h_scale=0.8, image_id=image_id)
-    else:
-        # Light pass
-        gaussian_denoised = denoise_gaussian_nlmeans(salt_pepper_cleaned, h_scale=0.5, image_id=image_id)
-    
-    # Stage 4: Speckle denoising (wavelet)
-    if detected_noise == 'speckle':
-        speckle_denoised = denoise_speckle_wavelet(gaussian_denoised, image_id=image_id)
-    else:
-        # Skip or pass through
-        speckle_denoised = gaussian_denoised.copy()
-    
-    # Stage 5: Motion artifact correction
-    if has_motion:
-        pma_corrected = correct_motion_artifacts(speckle_denoised, image_id=image_id)
-    else:
-        # Light bilateral filter for consistency
-        pma_corrected = cv2.bilateralFilter(speckle_denoised, 3, 20, 20)
-    
-    # Stage 6: Deblurring
-    if needs_deblur:
-        blur_type = opts.get('blur_type', 'gaussian') if not auto_detect else 'gaussian'
-        if blur_type == 'gaussian':
-            deblurred = deblur_gaussian_wiener(pma_corrected, image_id=image_id)
-        else:
-            # Edge-aware USM for bilateral/median blur
-            deblurred = deblur_edge_aware_usm(pma_corrected, image_id=image_id)
-    else:
-        # Pass through
-        deblurred = pma_corrected.copy()
-    
-    # Stage 7: Contrast enhancement (CLAHE)
-    contrast_enhanced = clahe_enhance(
-        deblurred,
-        clipLimit=opts.get('clipLimit', 2.0),
-        tileGrid=opts.get('tileGrid', (8, 8)),
-        image_id=image_id
-    )
-    
-    # Stage 8: Noise-aware sharpening
-    sharpened = sharpen_noise_aware(
-        contrast_enhanced,
-        radius=opts.get('sharpen_radius', 1.5),
-        amount=opts.get('sharpen_amount', 1.2),
-        threshold=opts.get('sharpen_threshold', 0.01),
-        image_id=image_id
-    )
-    
-    duration = time.time() - start_time
-    logger.info(f"Comprehensive preprocessing completed in {duration:.3f}s", extra={
-        'image_id': image_id,
-        'path': None,
-        'stage': 'comprehensive_preprocess'
-    })
-    
-    return {
-        'grayscale': grayscale,
-        'salt_pepper_cleaned': salt_pepper_cleaned,
-        'gaussian_denoised': gaussian_denoised,
-        'speckle_denoised': speckle_denoised,
-        'pma_corrected': pma_corrected,
-        'deblurred': deblurred,
-        'contrast_enhanced': contrast_enhanced,
-        'sharpened': sharpened,
     }
