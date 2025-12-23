@@ -93,27 +93,22 @@ class PipelineService:
         
         # Step 1: Preprocessing (CONDITIONAL)
         if skip_preprocessing:
-            logger.info("Skipping preprocessing pipeline (skip_preprocessing=True)", extra={
+            logger.info("Skipping preprocessing pipeline (skip_preprocessing=True) - passing raw image to ViT", extra={
                 'image_id': image_id,
                 'path': None,
                 'stage': 'pipeline_preprocess'
             })
             
-            # Minimal processing: just convert to grayscale and normalize to [0, 255]
-            grayscale = to_grayscale(image, image_id=image_id)
-            
-            # Save minimal preprocessing artifacts
+            # No preprocessing: pass raw image directly to ViT
+            # Save the original image as 'normalized' for consistency with API response
             preprocess_urls = {
-                'grayscale': self.storage.get_artifact_url(
-                    self.storage.save_artifact(grayscale, image_id, 'grayscale')
-                ),
                 'normalized': self.storage.get_artifact_url(
-                    self.storage.save_artifact(grayscale, image_id, 'normalized')
+                    self.storage.save_artifact(image, image_id, 'normalized')
                 )
             }
             
-            # Use grayscale as the final preprocessed image
-            preprocessed_image = grayscale
+            # Use original image as the final preprocessed image
+            preprocessed_image = image
             
         else:
             logger.info("Step 1: Preprocessing", extra={

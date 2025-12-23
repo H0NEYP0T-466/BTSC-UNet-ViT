@@ -15,7 +15,7 @@ A checkbox has been added to the upload card with the following options:
   - Label: "🔧 Full pipeline: Includes denoising, contrast enhancement, and sharpening"
 
 - **Checked (Fast Mode)**: Skip preprocessing
-  - Only grayscale conversion and normalization
+  - No preprocessing - raw image passed directly to ViT for classification
   - Label: "⚡ Fast mode: Image goes directly to classification"
 
 ### 2. Reduced Enhancement Intensity
@@ -68,12 +68,10 @@ The `run_inference` method now accepts a `skip_preprocessing` parameter:
 ```python
 def run_inference(self, image: np.ndarray, skip_preprocessing: bool = False) -> Dict:
     if skip_preprocessing:
-        # Fast mode: only grayscale conversion
-        grayscale = to_grayscale(image, image_id=image_id)
-        preprocessed_image = grayscale
+        # Fast mode: no preprocessing, raw image passed directly to ViT
+        preprocessed_image = image
         preprocess_urls = {
-            'grayscale': ...,
-            'normalized': ...
+            'normalized': ...  # Raw image saved as 'normalized'
         }
     else:
         # Full mode: complete preprocessing pipeline
