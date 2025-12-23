@@ -39,8 +39,8 @@ def create_brain_mask(
         'stage': 'brain_mask_creation'
     })
     
-    # Apply Otsu's thresholding for automatic threshold selection
-    # This is more robust than a fixed threshold for varying image intensities
+    # Apply fixed threshold to separate brain from background
+    # Using a low threshold (default 10) to include most brain tissue
     _, mask = cv2.threshold(image, threshold_value, 255, cv2.THRESH_BINARY)
     
     # Apply morphological operations to clean up the mask
@@ -52,19 +52,14 @@ def create_brain_mask(
     # Open to remove small noise regions
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
     
-    # Fill holes using flood fill from corners (assumes corners are background)
-    h, w = mask.shape
-    flood_mask = np.zeros((h + 2, w + 2), dtype=np.uint8)
-    mask_filled = mask.copy()
-    
-    # Flood fill from corners to identify background
-    cv2.floodFill(mask_filled, flood_mask, (0, 0), 255)
-    
-    # Invert the flood-filled image to get the holes
-    mask_inv = cv2.bitwise_not(mask_filled)
-    
-    # Combine original mask with filled holes
-    mask = cv2.bitwise_or(mask, mask_inv)
+    # Fill internal holes using contour-based approach
+    # Find contours and fill them to handle any internal holes
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if contours:
+        # Create a filled mask from the largest contour (brain region)
+        mask_filled = np.zeros_like(mask)
+        cv2.drawContours(mask_filled, contours, -1, 255, cv2.FILLED)
+        mask = mask_filled
     
     duration = time.time() - start_time
     logger.info(f"Brain mask created in {duration:.3f}s, coverage: {np.sum(mask > 0) / mask.size * 100:.1f}%", extra={
