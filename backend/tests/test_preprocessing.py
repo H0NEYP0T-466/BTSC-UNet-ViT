@@ -10,7 +10,8 @@ from app.utils.preprocessing import (
     unsharp_mask,
     normalize_image,
     preprocess_pipeline,
-    denoise_nlm
+    denoise_nlm,
+    run_preprocessing
 )
 
 
@@ -85,9 +86,9 @@ def test_normalize_image():
 
 
 def test_preprocess_pipeline():
-    """Test full preprocessing pipeline."""
+    """Test full preprocessing pipeline (legacy)."""
     image = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
-    result = preprocess_pipeline(image, apply_skull_stripping=False)
+    result = preprocess_pipeline(image)
     
     assert 'grayscale' in result
     assert 'denoised' in result
@@ -100,4 +101,64 @@ def test_preprocess_pipeline():
     for key, img in result.items():
         assert len(img.shape) == 2
         assert img.dtype == np.uint8
+
+
+def test_run_preprocessing():
+    """Test intelligent preprocessing pipeline with auto-detection."""
+    image = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
+    result = run_preprocessing(image, opts={'auto': True})
+    
+    # Check all expected stages are present
+    expected_stages = [
+        'grayscale',
+        'salt_pepper_cleaned',
+        'gaussian_denoised',
+        'speckle_denoised',
+        'pma_corrected',
+        'deblurred',
+        'contrast_enhanced',
+        'sharpened'
+    ]
+    
+    for stage in expected_stages:
+        assert stage in result, f"Missing stage: {stage}"
+        assert result[stage].dtype == np.uint8
+        assert len(result[stage].shape) == 2  # Grayscale
+
+
+def test_run_preprocessing_with_salt_pepper():
+    """Test that salt & pepper noise is detected and removed."""
+    # Create image with salt & pepper noise
+    image = np.random.randint(50, 200, (100, 100), dtype=np.uint8)
+    noise_mask = np.random.random((100, 100)) < 0.05
+    image[noise_mask] = np.random.choice([0, 255], size=np.sum(noise_mask))
+    
+    result = run_preprocessing(image, opts={'auto': True})
+    
+    # Verify salt_pepper_cleaned is different from grayscale (noise was detected)
+    assert 'salt_pepper_cleaned' in result
+    assert result['salt_pepper_cleaned'].dtype == np.uint8
+
+
+def test_run_preprocessing_conservative_parameters():
+    """Test that preprocessing uses conservative parameters to avoid white noise."""
+    # Clean image
+    image = np.random.randint(50, 200, (100, 100), dtype=np.uint8)
+    
+    result = run_preprocessing(image, opts={
+        'auto': True,
+        'clahe_clip_limit': 1.5,
+        'sharpen_amount': 0.8
+    })
+    
+    # Check that final sharpened output doesn't have extreme values
+    # (indicating white noise from over-processing)
+    sharpened = result['sharpened']
+    white_pixels = np.sum(sharpened == 255)
+    black_pixels = np.sum(sharpened == 0)
+    
+    # Less than 5% should be extreme values
+    total_pixels = sharpened.size
+    assert (white_pixels + black_pixels) / total_pixels < 0.05, \
+        "Too many extreme pixels - possible over-processing"
 

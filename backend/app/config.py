@@ -83,12 +83,13 @@ class Settings(BaseSettings):
     SEED: int = 42
 
     # Preprocessing parameters
-    CLAHE_CLIP_LIMIT: float = 2.0
+    CLAHE_CLIP_LIMIT: float = 1.5  # Reduced from 2.0 to avoid white noise
     CLAHE_TILE_GRID_SIZE: tuple = (8, 8)
     MEDIAN_KERNEL_SIZE: int = 3
     NLM_H: int = 8  # Reduced from 10 to 8 for less blur
-    UNSHARP_RADIUS: float = 1.5  # Increased from 1.0 to 1.5 for better sharpness
-    UNSHARP_AMOUNT: float = 1.5  # Increased from 1.0 to 1.5 for better detail
+    UNSHARP_RADIUS: float = 1.0  # For noise-aware sharpening
+    UNSHARP_AMOUNT: float = 0.8  # Conservative to avoid white noise
+    SHARPEN_THRESHOLD: float = 0.02  # Higher threshold to avoid sharpening noise
     MOTION_PRESERVE_DETAIL: bool = True  # Use minimal edge-preserving bilateral filter
     
     # Segmentation post-processing parameters
