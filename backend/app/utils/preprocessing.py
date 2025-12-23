@@ -565,8 +565,8 @@ def run_preprocessing(
     5. Sharpening (conservative unsharp mask)
     
     Note: PMA correction and deblurring are SKIPPED in inference to avoid
-    over-smoothing and preserve lesion edges. Speckle noise is NOT applied
-    (augmentation only).
+    over-smoothing and preserve lesion edges. Speckle noise removal is also
+    SKIPPED (speckle noise is for data augmentation only, not inference).
     
     Args:
         image: Input image (RGB or grayscale)
@@ -622,7 +622,7 @@ def run_preprocessing(
     current = grayscale.copy()
     
     # Step 2: Conservative denoising (NLM with reduced h parameter)
-    # Skip speckle noise (augmentation-only, not for inference)
+    # Speckle noise removal is SKIPPED (speckle noise is for augmentation only, not inference)
     if auto_detect:
         logger.info("Applying conservative Gaussian noise removal (NLM with h=6)", extra={
             'image_id': image_id,
@@ -635,8 +635,8 @@ def run_preprocessing(
         results['denoised'] = current.copy()
     
     # Step 3: Motion reduction (minimal bilateral filter, NO PMA correction)
-    # This preserves detail while reducing minor motion artifacts
-    logger.info("Applying minimal motion reduction (bilateral filter, preserves detail)", extra={
+    # Bilateral filter preserves edges while reducing noise/motion artifacts
+    logger.info("Applying minimal motion reduction (bilateral filter, preserves edges)", extra={
         'image_id': image_id,
         'path': None,
         'stage': 'motion_reduction'
