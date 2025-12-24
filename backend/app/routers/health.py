@@ -22,8 +22,7 @@ async def health_check():
     
     # Check if models can be loaded (lazy check)
     models_status = {
-        'unet': True,       # BraTS UNet - will be loaded on demand
-        'unet_tumor': True, # PNG UNet Tumor - will be loaded on demand
+        'unet_tumor': True, # UNet Tumor - will be loaded on demand
         'vit': True         # ViT - will be loaded on demand
     }
     

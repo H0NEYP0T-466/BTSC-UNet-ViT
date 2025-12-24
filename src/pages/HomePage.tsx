@@ -35,16 +35,9 @@ export function HomePage() {
       
       // Log tumor segmentation keys if present
       if (response.tumor_segmentation) {
-        console.log('[HomePage] Tumor segmentation keys (UNet1):', Object.keys(response.tumor_segmentation));
+        console.log('[HomePage] Tumor segmentation keys:', Object.keys(response.tumor_segmentation));
       } else {
-        console.log('[HomePage] No tumor segmentation UNet1 (no tumor detected)');
-      }
-      
-      // Log tumor segmentation2 keys if present
-      if (response.tumor_segmentation2) {
-        console.log('[HomePage] Tumor segmentation2 keys (UNet2):', Object.keys(response.tumor_segmentation2));
-      } else {
-        console.log('[HomePage] No tumor segmentation UNet2 (no tumor detected)');
+        console.log('[HomePage] No tumor segmentation (no tumor detected)');
       }
       
       // Log classification data
@@ -110,31 +103,7 @@ export function HomePage() {
                   </div>
                 )}
 
-                {/* Tumor Segmentation Results - UNet1 (BraTS model) */}
-                {result.tumor_segmentation && (
-                  <div className="result-item">
-                    <SegmentationOverlay
-                      title="Tumor Segmentation (UNet1 - BraTS)"
-                      maskUrl={apiClient.getResourceUrl(result.tumor_segmentation.mask)}
-                      overlayUrl={apiClient.getResourceUrl(result.tumor_segmentation.overlay)}
-                      segmentedUrl={apiClient.getResourceUrl(result.tumor_segmentation.segmented)}
-                    />
-                  </div>
-                )}
-
-                {/* Tumor Segmentation Results - UNet2 (PNG model) */}
-                {result.tumor_segmentation2 && (
-                  <div className="result-item">
-                    <SegmentationOverlay
-                      title="Tumor Segmentation (UNet2 - PNG)"
-                      maskUrl={apiClient.getResourceUrl(result.tumor_segmentation2.mask)}
-                      overlayUrl={apiClient.getResourceUrl(result.tumor_segmentation2.overlay)}
-                      segmentedUrl={apiClient.getResourceUrl(result.tumor_segmentation2.segmented)}
-                    />
-                  </div>
-                )}
-
-                {/* Classification Results */}
+                {/* Classification Results - MOVED BEFORE SEGMENTATION */}
                 <div className="result-item">
                   <PredictionCard
                     className={result.classification.class}
@@ -143,6 +112,18 @@ export function HomePage() {
                     logits={result.classification.logits}
                   />
                 </div>
+
+                {/* Tumor Segmentation Results */}
+                {result.tumor_segmentation && (
+                  <div className="result-item">
+                    <SegmentationOverlay
+                      title="Tumor Segmentation"
+                      maskUrl={apiClient.getResourceUrl(result.tumor_segmentation.mask)}
+                      overlayUrl={apiClient.getResourceUrl(result.tumor_segmentation.overlay)}
+                      segmentedUrl={apiClient.getResourceUrl(result.tumor_segmentation.segmented)}
+                    />
+                  </div>
+                )}
 
                 {/* Metadata */}
                 <div className="result-item">
