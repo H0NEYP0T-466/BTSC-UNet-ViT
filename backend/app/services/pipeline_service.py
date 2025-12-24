@@ -4,7 +4,7 @@ Pipeline service for orchestrating preprocessing, tumor segmentation, and classi
 import time
 from typing import Dict, Optional
 import numpy as np
-from app.utils.preprocessing import preprocess_pipeline, to_grayscale
+from app.utils.preprocessing import preprocess_pipeline
 from app.models.unet_tumor.infer_unet_tumor import get_unet_tumor_inference
 from app.models.vit.infer_vit import get_vit_inference
 from app.services.storage_service import get_storage_service
