@@ -131,7 +131,7 @@ async def startup_event():
     })
     
     # Check UNet model
-    unet_checkpoint = settings.CHECKPOINTS_UNET / settings.UNET_CHECKPOINT_NAME
+    unet_checkpoint = settings.CHECKPOINTS_UNET_TUMOR
     if unet_checkpoint.exists():
         logger.info("Loading UNet model...", extra={
             'image_id': None,

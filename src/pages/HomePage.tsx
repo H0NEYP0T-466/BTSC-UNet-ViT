@@ -102,8 +102,6 @@ export function HomePage() {
                     />
                   </div>
                 )}
-
-                {/* Classification Results - MOVED BEFORE SEGMENTATION */}
                 <div className="result-item">
                   <PredictionCard
                     className={result.classification.class}
@@ -112,8 +110,7 @@ export function HomePage() {
                     logits={result.classification.logits}
                   />
                 </div>
-
-                {/* Tumor Segmentation Results */}
+                
                 {result.tumor_segmentation && (
                   <div className="result-item">
                     <SegmentationOverlay
