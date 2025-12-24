@@ -1,6 +1,5 @@
 """
 UNet Tumor model architecture for tumor segmentation on PNG images.
-This model is separate from the main UNet which handles BraTS .h5 data.
 """
 import torch
 import torch.nn as nn

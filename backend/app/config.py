@@ -46,21 +46,12 @@ class Settings(BaseSettings):
     VIT_DATASET_ROOT: Path = BASE_DIR / "dataset" / "Vit_Dataset"
     # Legacy path for backward compatibility (was used for segmented outputs, now deprecated)
     SEGMENTED_DATASET_ROOT: Path = DATASET_ROOT / "Vit_Dataset"
-    BRATS_ROOT: Path = DATASET_ROOT  # UNet segmentation dataset (4-channel H5 files)
 
     # Model checkpoint directories
-    CHECKPOINTS_UNET: Path = CHECKPOINTS_DIR / "unet"
     CHECKPOINTS_VIT: Path = CHECKPOINTS_DIR / "vit"
     CHECKPOINTS_UNET_TUMOR: Path = CHECKPOINTS_DIR / "unet_tumor"
-    UNET_CHECKPOINT_NAME: str = "unet_best.pth"
     VIT_CHECKPOINT_NAME: str = "vit_best.pth"
     UNET_TUMOR_CHECKPOINT_NAME: str = "unet_tumor_best.pth"
-
-    # UNet settings (BraTS H5 data - 4 modalities)
-    UNET_IN_CHANNELS: int = 4  # ✅ FIXED - BraTS has 4 modalities (T1, T1ce, T2, FLAIR)
-    UNET_OUT_CHANNELS: int = 1
-    UNET_CHANNELS:  tuple = (16, 32, 64, 128, 256)
-    UNET_STRIDES: tuple = (2, 2, 2, 2)
 
     # UNet Tumor settings (PNG images - RGB)
     UNET_TUMOR_IN_CHANNELS: int = 3  # RGB images
@@ -105,7 +96,6 @@ settings = Settings()
 
 # Ensure required directories exist
 settings.RESOURCES_DIR.mkdir(parents=True, exist_ok=True)
-settings.CHECKPOINTS_UNET.mkdir(parents=True, exist_ok=True)
 settings.CHECKPOINTS_VIT.mkdir(parents=True, exist_ok=True)
 settings.CHECKPOINTS_UNET_TUMOR.mkdir(parents=True, exist_ok=True)
 settings.UPLOADS_DIR.mkdir(parents=True, exist_ok=True)

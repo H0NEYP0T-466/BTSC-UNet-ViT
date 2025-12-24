@@ -56,13 +56,6 @@ export interface InferenceResponse {
     heatmap?: string;
     probability_map?: string;
   };
-  tumor_segmentation2?: {
-    mask: string;
-    overlay: string;
-    segmented: string;
-    heatmap?: string;
-    probability_map?: string;
-  };
   classification: {
     class: string;
     confidence: number;
@@ -77,7 +70,6 @@ export interface HealthResponse {
   status: string;
   version: string;
   models_loaded: {
-    unet: boolean;
     unet_tumor: boolean;
     vit: boolean;
   };

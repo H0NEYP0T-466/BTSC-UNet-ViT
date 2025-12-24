@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 from app.utils.preprocessing import preprocess_pipeline
 from app.utils.imaging import read_image, save_image
-from app.models.unet.infer_unet import get_unet_inference
+from app.models.unet_tumor.infer_unet_tumor import get_unet_tumor_inference
 from app.config import settings
 from app.utils.logger import get_logger
 
@@ -28,14 +28,14 @@ class DatasetService:
         })
     
     def _ensure_unet_loaded(self):
-        """Ensure UNet model is loaded."""
+        """Ensure UNet Tumor model is loaded."""
         if self.unet is None:
-            logger.info("Loading UNet for dataset processing", extra={
+            logger.info("Loading UNet Tumor for dataset processing", extra={
                 'image_id': None,
                 'path': None,
                 'stage': 'dataset_model_load'
             })
-            self.unet = get_unet_inference()
+            self.unet = get_unet_tumor_inference()
     
     def process_single_image(
         self,
