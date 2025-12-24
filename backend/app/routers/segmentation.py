@@ -7,7 +7,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.schemas.responses import SegmentResponse, LogContext
 from app.utils.preprocessing import preprocess_pipeline
 from app.utils.imaging import bytes_to_numpy
-from app.models.unet.infer_unet import get_unet_inference
+from app.models.unet_tumor.infer_unet_tumor import get_unet_tumor_inference
 from app.services.storage_service import get_storage_service
 from app.config import settings
 from app.utils.logger import get_logger
@@ -57,8 +57,8 @@ async def segment_image(file: UploadFile = File(...)):
             'stage': 'segment'
         })
         
-        # Segment using local trained UNet model
-        unet = get_unet_inference()
+        # Segment using UNet Tumor model
+        unet = get_unet_tumor_inference()
         
         segmentation = unet.segment_image(normalized, image_id=image_id)
         
