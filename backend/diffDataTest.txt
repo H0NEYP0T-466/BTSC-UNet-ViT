@@ -1,0 +1,36 @@
+
+(venv) X:\file\FAST_API\BTSC-UNet-ViT\backend\tests>python testingViT.py --data-dir "C:\Users\Muhammad Fezan\Downloads\Compressed\data_dir" --checkpoint "X:\file\FAST_API\BTSC-UNet-ViT\backend\resources\checkpoints\vit\vit_best.pth" --device cpu --save-csv "X:\file\FAST_API\BTSC-UNet-ViT\backend\resources\checkpoints\vit\misclassified_repo_consistent.csv"
+Configuration
+- Data dir     : C:\Users\Muhammad Fezan\Downloads\Compressed\data_dir
+- Checkpoint   : X:\file\FAST_API\BTSC-UNet-ViT\backend\resources\checkpoints\vit\vit_best.pth
+- Device       : cpu
+- Batch size   : 1
+Detected classes (repo settings): ['notumor', 'glioma', 'meningioma', 'pituitary']
+Processed 500 / 3160 | Running Acc: 99.80%
+Processed 1000 / 3160 | Running Acc: 99.90%
+Processed 1500 / 3160 | Running Acc: 99.33%
+Processed 2000 / 3160 | Running Acc: 99.50%
+Processed 2500 / 3160 | Running Acc: 99.40%
+Processed 3000 / 3160 | Running Acc: 99.50%
+
+=== Evaluation Summary (repo-consistent) ===
+Total samples : 3160
+Total correct : 3145
+Loss          : 0.012892
+Accuracy      : 99.53%
+
+Per-class accuracy:
+  [0] notumor      396/396  (100.00%)
+  [1] glioma       916/926  (98.92%)
+  [2] meningioma   937/937  (100.00%)
+  [3] pituitary    896/901  (99.45%)
+
+Confusion matrix [true rows x pred cols]:
+pred->      0      1      2      3
+true  0:    396      0      0      0
+true  1:      2    916      8      0
+true  2:      0      0    937      0
+true  3:      0      0      5    896
+Saved misclassifications to: X:\file\FAST_API\BTSC-UNet-ViT\backend\resources\checkpoints\vit\misclassified_repo_consistent.csv (count=15)
+
+(venv) X:\file\FAST_API\BTSC-UNet-ViT\backend\tests>
