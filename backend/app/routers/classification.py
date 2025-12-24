@@ -20,7 +20,7 @@ async def classify_image(file: UploadFile = File(...)):
     Classify brain tumor type in uploaded (segmented) image using ViT.
     
     Returns predicted class, confidence, and logits.
-    Classes: no_tumor, giloma, meningioma, pituitary
+    Classes: no_tumor, glioma, meningioma, pituitary
     """
     start_time = time.time()
     

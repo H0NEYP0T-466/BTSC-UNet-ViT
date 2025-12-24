@@ -146,7 +146,7 @@ async def startup_event():
     else:
         logger.warning(
             f"UNet model not found at {unet_checkpoint}. "
-            f"Train the model first using: python -m app.models.unet.train_unet",
+            f"Train the model first using: python -m app.models.unet_tumor.train_unet_tumor",
             extra={
                 'image_id': None,
                 'path': str(unet_checkpoint),
