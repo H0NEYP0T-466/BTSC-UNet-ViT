@@ -618,10 +618,12 @@ BTSC-UNet-ViT/
 │   │   │   ├── segmentation.py       # Segmentation API
 │   │   │   └── classification.py     # Classification API
 │   │   ├── models/                   # Deep learning models
-│   │   │   ├── unet/                 # UNet segmentation
+│   │   │   ├── unet_tumor/           # UNet tumor segmentation
 │   │   │   │   ├── model.py          # UNet architecture
-│   │   │   │   ├── train_unet.py     # Training script
-│   │   │   │   └── infer_unet.py     # Inference wrapper
+│   │   │   │   ├── train_unet_tumor.py # Training script
+│   │   │   │   ├── infer_unet_tumor.py # Inference wrapper
+│   │   │   │   ├── datamodule.py     # Dataset and data loading
+│   │   │   │   └── utils.py          # Helper functions
 │   │   │   └── vit/                  # Vision Transformer
 │   │   │       ├── model.py          # ViT architecture
 │   │   │       ├── train_vit.py      # Training script
@@ -633,7 +635,12 @@ BTSC-UNet-ViT/
 │   │   │   ├── storage_service.py    # File management
 │   │   │   └── dataset_service.py    # Batch processing (90k images)
 │   │   ├── utils/                    # Utility modules
-│   │   │   ├── preprocessing.py      # Image preprocessing pipeline
+│   │   │   ├── btsc_preprocess/      # BTSC preprocessing modules
+│   │   │   │   ├── contrast.py       # Contrast enhancement
+│   │   │   │   ├── deblur.py         # Deblurring algorithms
+│   │   │   │   ├── detect.py         # Detection utilities
+│   │   │   │   └── noise.py          # Noise reduction
+│   │   │   ├── preprocessing.py      # Main preprocessing pipeline
 │   │   │   ├── imaging.py            # Image I/O operations
 │   │   │   ├── metrics.py            # Evaluation metrics
 │   │   │   └── logger.py             # Logging utilities
@@ -642,24 +649,29 @@ BTSC-UNet-ViT/
 │   │   │   └── responses.py          # Response schemas
 │   │   └── resources/                # Model artifacts
 │   │       ├── checkpoints/          # Saved model weights
-│   │       │   ├── unet/             # UNet checkpoints
 │   │       │   └── vit/              # ViT checkpoints
-│   │       ├── uploads/              # Uploaded images
-│   │       └── artifacts/            # Processing results
+│   │       └── examples/             # Example images
 │   ├── tests/                        # Unit and integration tests
 │   ├── requirements.txt              # Python dependencies
 │   └── README.md                     # Backend documentation
 │
 ├── src/                              # Frontend React application
 │   ├── components/                   # Reusable React components
-│   │   ├── FileUpload.tsx            # Drag-and-drop upload
-│   │   ├── ResultsDisplay.tsx        # Results visualization
-│   │   └── ProcessingStages.tsx      # Pipeline stages view
+│   │   ├── ErrorBoundary.tsx         # Error boundary wrapper
+│   │   ├── Footer/                   # Footer component
+│   │   ├── Header/                   # Header component
+│   │   ├── ImagePreview/             # Image preview display
+│   │   ├── PredictionCard/           # Classification results card
+│   │   ├── PreprocessedGallery/      # Preprocessing stages gallery
+│   │   ├── SegmentationOverlay/      # Segmentation visualization
+│   │   └── UploadCard/               # File upload component
 │   ├── pages/                        # Page components
-│   │   └── Home.tsx                  # Main application page
+│   │   └── HomePage.tsx              # Main application page
 │   ├── services/                     # API client
-│   │   └── api.ts                    # Axios API wrapper
+│   │   ├── api.ts                    # Axios API wrapper
+│   │   └── types.ts                  # TypeScript type definitions
 │   ├── theme/                        # Styling
+│   │   ├── global.css                # Global styles
 │   │   └── variables.css             # CSS custom properties
 │   └── assets/                       # Static assets
 │
@@ -964,7 +976,7 @@ Visit `http://localhost:8000/docs` for:
 **Training Command:**
 ```bash
 cd backend
-python -m app.models.unet.train_unet
+python -m app.models.unet_tumor.train_unet_tumor
 ```
 
 **Training Features:**
@@ -976,8 +988,8 @@ python -m app.models.unet.train_unet
 - ✅ Visualization of training progress
 
 **Output:**
-- Best model: `backend/app/resources/checkpoints/unet/unet_best.pth`
-- Last checkpoint: `backend/app/resources/checkpoints/unet/unet_last.pth`
+- Best model: `backend/app/resources/checkpoints/unet_tumor/unet_tumor_best.pth`
+- Last checkpoint: `backend/app/resources/checkpoints/unet_tumor/unet_tumor_last.pth`
 
 ### ViT Training (Classification)
 
