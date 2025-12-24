@@ -688,8 +688,7 @@ BTSC-UNet-ViT/
 │   └── val_vis_epoch_100.png         # Final validation results
 │
 ├── train_vit_colab.py                # Google Colab ViT training
-├── train_unet_colab.py               # Google Colab UNet training
-├── train_unet_tumor_colab.py         # Alternative UNet training
+├── train_unet_tumor_colab.py         # Google Colab UNet tumor training
 │
 ├── package.json                      # Node.js dependencies
 ├── tsconfig.json                     # TypeScript configuration
@@ -1249,6 +1248,15 @@ This project uses the following dependencies across frontend and backend:
 ![typescript](https://img.shields.io/npm/v/typescript?style=for-the-badge&label=typescript&color=007ACC)
 ![vite](https://img.shields.io/npm/v/vite?style=for-the-badge&label=vite&color=646CFF)
 ![eslint](https://img.shields.io/npm/v/eslint?style=for-the-badge&label=eslint&color=4B32C3)
+![@eslint/js](https://img.shields.io/npm/v/@eslint/js?style=for-the-badge&label=@eslint/js&color=4B32C3)
+![@types/node](https://img.shields.io/npm/v/@types/node?style=for-the-badge&label=@types/node&color=339933)
+![@types/react](https://img.shields.io/npm/v/@types/react?style=for-the-badge&label=@types/react&color=61DAFB)
+![@types/react-dom](https://img.shields.io/npm/v/@types/react-dom?style=for-the-badge&label=@types/react-dom&color=61DAFB)
+![@vitejs/plugin-react](https://img.shields.io/npm/v/@vitejs/plugin-react?style=for-the-badge&label=@vitejs/plugin-react&color=646CFF)
+![eslint-plugin-react-hooks](https://img.shields.io/npm/v/eslint-plugin-react-hooks?style=for-the-badge&label=eslint-plugin-react-hooks&color=61DAFB)
+![eslint-plugin-react-refresh](https://img.shields.io/npm/v/eslint-plugin-react-refresh?style=for-the-badge&label=eslint-plugin-react-refresh&color=61DAFB)
+![globals](https://img.shields.io/npm/v/globals?style=for-the-badge&label=globals&color=F7DF1E)
+![typescript-eslint](https://img.shields.io/npm/v/typescript-eslint?style=for-the-badge&label=typescript-eslint&color=007ACC)
 
 - **@eslint/js** ^9.39.1 - ESLint JavaScript plugin
 - **@types/node** ^24.10.4 - TypeScript definitions for Node.js
@@ -1269,12 +1277,28 @@ This project uses the following dependencies across frontend and backend:
 <summary><b>Backend Runtime Dependencies</b></summary>
 
 ![fastapi](https://img.shields.io/pypi/v/fastapi?style=for-the-badge&label=fastapi&color=009688)
+![uvicorn](https://img.shields.io/pypi/v/uvicorn?style=for-the-badge&label=uvicorn&color=2094F3)
+![pydantic](https://img.shields.io/pypi/v/pydantic?style=for-the-badge&label=pydantic&color=E92063)
+![pydantic-settings](https://img.shields.io/pypi/v/pydantic-settings?style=for-the-badge&label=pydantic-settings&color=E92063)
+![python-multipart](https://img.shields.io/pypi/v/python-multipart?style=for-the-badge&label=python-multipart&color=FF6B6B)
 ![torch](https://img.shields.io/pypi/v/torch?style=for-the-badge&label=torch&color=EE4C2C)
+![torchvision](https://img.shields.io/pypi/v/torchvision?style=for-the-badge&label=torchvision&color=EE4C2C)
+![timm](https://img.shields.io/pypi/v/timm?style=for-the-badge&label=timm&color=FF6F00)
 ![monai](https://img.shields.io/pypi/v/monai?style=for-the-badge&label=monai&color=00758F)
 ![numpy](https://img.shields.io/pypi/v/numpy?style=for-the-badge&label=numpy&color=013243)
+![scipy](https://img.shields.io/pypi/v/scipy?style=for-the-badge&label=scipy&color=8CAAE6)
 ![scikit-image](https://img.shields.io/pypi/v/scikit-image?style=for-the-badge&label=scikit-image&color=013220)
+![scikit-learn](https://img.shields.io/pypi/v/scikit-learn?style=for-the-badge&label=scikit-learn&color=F7931E)
 ![opencv-python](https://img.shields.io/pypi/v/opencv-python?style=for-the-badge&label=opencv-python&color=5C3EE8)
 ![pillow](https://img.shields.io/pypi/v/pillow?style=for-the-badge&label=pillow&color=FFD43B)
+![albumentations](https://img.shields.io/pypi/v/albumentations?style=for-the-badge&label=albumentations&color=FF6F00)
+![matplotlib](https://img.shields.io/pypi/v/matplotlib?style=for-the-badge&label=matplotlib&color=11557C)
+![h5py](https://img.shields.io/pypi/v/h5py?style=for-the-badge&label=h5py&color=F05033)
+![nibabel](https://img.shields.io/pypi/v/nibabel?style=for-the-badge&label=nibabel&color=4B8BBE)
+![SimpleITK](https://img.shields.io/pypi/v/SimpleITK?style=for-the-badge&label=SimpleITK&color=2C6FB0)
+![tqdm](https://img.shields.io/pypi/v/tqdm?style=for-the-badge&label=tqdm&color=FFC107)
+![python-dotenv](https://img.shields.io/pypi/v/python-dotenv?style=for-the-badge&label=python-dotenv&color=ECD53F)
+![PyYAML](https://img.shields.io/pypi/v/PyYAML?style=for-the-badge&label=PyYAML&color=CB171E)
 
 - **fastapi** 0.115.5 - Modern web framework for building APIs
 - **uvicorn[standard]** 0.32.1 - ASGI server for FastAPI
