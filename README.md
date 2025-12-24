@@ -699,7 +699,6 @@ BTSC-UNet-ViT/
 
 ### Available Documentation
 - **[Backend README](backend/README.md)** - API details, training procedures, deployment guide
-- **[Frontend README](frontend_README.md)** - Components, styling, development workflow
 - **[Security Policy](SECURITY.md)** - Security updates and vulnerability disclosure
 - **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to the project
 - **[Code of Conduct](CODE_OF_CONDUCT.md)** - Community standards and expectations

@@ -28,7 +28,7 @@ Preprocessing → ViT Classification → Conditional UNet Segmentation
 
 ### Classes
 - `no_tumor`: No tumor detected
-- `giloma`: Glioma tumor
+- `glioma`: Glioma tumor
 - `meningioma`: Meningioma tumor
 - `pituitary`: Pituitary tumor
 
@@ -55,17 +55,7 @@ cd backend
 pip install -r requirements.txt
 ```
 
-3. Setup HD-BET (brain extraction tool):
-```bash
-cd backend
-python setup_hdbet.py
-```
-
-**Important:** HD-BET requires model parameters to be downloaded. The `setup_hdbet.py` script will automatically download them (~100MB) on first run. This is a one-time setup step.
-
-If you encounter errors with HD-BET, see [../hdbet.md](../hdbet.md) for detailed troubleshooting.
-
-4. Configure environment:
+3. Configure environment:
 ```bash
 # Create .env file (optional, defaults in config.py)
 cp .env.example .env
@@ -122,7 +112,7 @@ Checkpoints saved to: `app/resources/checkpoints/unet/`
 ### ViT Training (on classified images)
 
 1. Organize your images into class folders in `backend/dataset/Vit_Dataset/`:
-   - `giloma/` - Glioma tumor images
+   - `glioma/` - Glioma tumor images
    - `meningioma/` - Meningioma tumor images
    - `notumor/` - No tumor images
    - `pituitary/` - Pituitary tumor images

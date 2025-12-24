@@ -120,7 +120,7 @@ class DatasetService:
         self._ensure_unet_loaded()
         
         # Get class folders
-        class_folders = ['giloma', 'meningioma', 'notumor', 'pituitary']
+        class_folders = ['glioma', 'meningioma', 'notumor', 'pituitary']
         
         total_processed = 0
         total_failed = 0
