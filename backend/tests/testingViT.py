@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
-"""
+r"""
 Evaluate the ViT model using the same inference pipeline as the repo (ViTInference).
+
+cd /d X:\file\FAST_API\BTSC-UNet-ViT\backend
+
+python testingViT.py --data-dir "C:\Users\Muhammad Fezan\Downloads\Compressed\data_dir" --checkpoint "X:\file\FAST_API\BTSC-UNet-ViT\backend\resources\checkpoints\vit\vit_best.pth" --save-csv "X:\file\FAST_API\BTSC-UNet-ViT\backend\misclassified_vit.csv"
 
 - Loads the model via app.models.vit.infer_vit.ViTInference (uses get_vit_model and repo transforms).
 - Evaluates a 4-class ImageFolder dataset:
